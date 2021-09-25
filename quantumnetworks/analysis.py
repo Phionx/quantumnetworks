@@ -1,4 +1,6 @@
-#%%
+"""
+Base Analysis
+"""
 from typing import Dict
 from abc import abstractmethod, ABCMeta
 import numpy as np
@@ -31,25 +33,3 @@ class SystemSolver(metaclass=ABCMeta):
             f = self.eval_f(X[:, i], u)
             X[:, i + 1] = X[:, i] + dt * f
         return X
-
-
-class ExampleSystem(SystemSolver):
-    def _param_validation(self):
-        if "w" not in self.params:
-            self.params["w"] = 2
-
-    def eval_f(self, x: np.ndarray, u: np.ndarray) -> np.ndarray:
-        return self.params["w"] * x + u
-
-    def eval_u(self, t: float):
-        return t
-
-
-#%%
-sys = ExampleSystem(params={"w": 10})
-x_0 = np.array([0])
-ts = np.linspace(0, 1, 101)
-X = sys.forward_euler(x_0, ts)
-plt.plot(ts, X[0, :])
-
-# %%
