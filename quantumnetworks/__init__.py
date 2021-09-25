@@ -1,5 +1,5 @@
 """
 Quantum Networks
 """
-from .exponential import ExpSystem
+from .systems import ExpSystem, SingleModeSystem
 from .visualization import plot_evolution
