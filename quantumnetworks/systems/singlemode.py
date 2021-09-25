@@ -36,7 +36,7 @@ class SingleModeSystem(SystemSolver):
     def B(self):
         if self._B is None:
             kappa_a = self.params["kappa_a"]
-            B = np.array([[kappa_a, 0], [0, kappa_a]])
+            B = np.array([[np.sqrt(kappa_a), 0], [0, np.sqrt(kappa_a)]])
             self._B = B
         return self._B
 
