@@ -21,7 +21,11 @@ class SystemSolver(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def eval_u(self, t: float):
+    def eval_u(self, t: float) -> np.ndarray:
+        pass
+
+    @abstractmethod
+    def eval_Jf(self, x: np.ndarray, u: np.ndarray) -> np.ndarray:
         pass
 
     def forward_euler(self, x_0: np.ndarray, ts: np.ndarray):

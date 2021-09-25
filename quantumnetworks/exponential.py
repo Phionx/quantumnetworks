@@ -16,3 +16,6 @@ class ExpSystem(SystemSolver):
 
     def eval_u(self, t: float):
         return t
+
+    def eval_Jf(self, x: np.ndarray, u: np.ndarray) -> np.ndarray:
+        return np.array([[-1 * self.params["lambda"]]])
