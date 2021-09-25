@@ -28,6 +28,20 @@ class SystemSolver(metaclass=ABCMeta):
     def eval_Jf(self, x: np.ndarray, u: np.ndarray) -> np.ndarray:
         pass
 
+    def eval_Jf_numerical(
+        self, x: np.ndarray, u: np.ndarray, dx: float = 0.01
+    ) -> np.ndarray:
+        f = self.eval_f(x, u)
+        J = np.zeros((x.size, x.size))
+        for i, _ in enumerate(x):
+            delta_x = np.zeros(x.size)
+            delta_x[i] = dx
+            new_x = x + delta_x
+            f_new = self.eval_f(new_x, u)
+            delta_f = f_new - f
+            J[:, i] = delta_f / dx
+        return J
+
     def forward_euler(self, x_0: np.ndarray, ts: np.ndarray):
         X = 1.0 * np.zeros((x_0.size, ts.size))
         X[:, 0] = x_0
