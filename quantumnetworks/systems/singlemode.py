@@ -1,5 +1,5 @@
 """
-Exponential system
+Driven Signle Mode System
 """
 from typing import Dict
 import numpy as np
