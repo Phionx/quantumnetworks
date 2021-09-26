@@ -5,7 +5,7 @@ from typing import Dict, Any, List
 import numpy as np
 import os
 
-from quantumnetworks.analysis import SystemSolver
+from quantumnetworks.systems.base import SystemSolver
 
 
 class MultiModeSystem(SystemSolver):

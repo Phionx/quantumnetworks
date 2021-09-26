@@ -3,7 +3,7 @@ Exponential system
 """
 import numpy as np
 
-from quantumnetworks.analysis import SystemSolver
+from quantumnetworks.systems.base import SystemSolver
 
 
 class ExpSystem(SystemSolver):
