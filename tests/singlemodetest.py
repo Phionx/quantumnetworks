@@ -24,11 +24,11 @@ class SingleModeTest(unittest.TestCase):
         ts = np.linspace(0, 10, 100001)
 
         # solve using SystemSolver
-        sys = SingleModeSystem(params=self.params, A_in=A_in)
-        X = sys.forward_euler(x_0, ts)
+        system = SingleModeSystem(params=self.params, A_in=A_in)
+        X = system.forward_euler(x_0, ts)
 
         # solve using scipy.integrate.odeint
-        func = lambda y, t: sys.eval_f(y, sys.eval_u(t))
+        func = lambda y, t: system.eval_f(y, system.eval_u(t))
         sol = odeint(func, x_0, ts)
         self.assertTrue(np.allclose(X.T, sol, atol=0.002))
 
@@ -38,11 +38,11 @@ class SingleModeTest(unittest.TestCase):
         ts = np.linspace(0, 10, 100001)
 
         # solve using SystemSolver
-        sys = SingleModeSystem(params=self.params, A_in=A_in)
-        X = sys.forward_euler(x_0, ts)
+        system = SingleModeSystem(params=self.params, A_in=A_in)
+        X = system.forward_euler(x_0, ts)
 
         # solve using scipy.integrate.odeint
-        func = lambda y, t: sys.eval_f(y, sys.eval_u(t))
+        func = lambda y, t: system.eval_f(y, system.eval_u(t))
         sol = odeint(func, x_0, ts)
         self.assertTrue(np.allclose(X.T, sol, atol=0.002))
 
@@ -51,10 +51,10 @@ class SingleModeTest(unittest.TestCase):
         x_0 = np.array([1, 0])
 
         # test analytic vs numerical Jf
-        sys = SingleModeSystem(params=self.params, A_in=A_in)
-        u = sys.eval_u(0)
-        Jf_analytic = sys.eval_Jf(x_0, u)
-        Jf_numeric = sys.eval_Jf_numerical(x_0, u)
+        system = SingleModeSystem(params=self.params, A_in=A_in)
+        u = system.eval_u(0)
+        Jf_analytic = system.eval_Jf(x_0, u)
+        Jf_numeric = system.eval_Jf_numerical(x_0, u)
         self.assertTrue(np.allclose(Jf_analytic, Jf_numeric))
 
 
