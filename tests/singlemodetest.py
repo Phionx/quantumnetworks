@@ -46,11 +46,11 @@ class SingleModeTest(unittest.TestCase):
         sol = odeint(func, x_0, ts)
         self.assertTrue(np.allclose(X.T, sol, atol=0.002))
 
-    def test_analytical_vs_numerical_Jf(self):
+    def test_analytic_vs_numerical_Jf(self):
         A_in = None
         x_0 = np.array([1, 0])
 
-        # solve using SystemSolver
+        # test analytic vs numerical Jf
         sys = SingleModeSystem(params=self.params, A_in=A_in)
         u = sys.eval_u(0)
         Jf_analytic = sys.eval_Jf(x_0, u)
