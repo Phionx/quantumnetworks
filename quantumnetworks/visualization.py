@@ -10,5 +10,5 @@ def plot_evolution(x, ts, fig=None, ax=None, **kwargs):
     ax.plot(ts, x, **kwargs)
     ax.set_xlabel("Time")
     ax.set_ylabel("State")
-    ax.set_title(f"Time Evolution of System State")
+    ax.set_title(f"Time Evolution of System")
     return fig, ax

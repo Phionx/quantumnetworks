@@ -8,10 +8,15 @@ from quantumnetworks.analysis import SystemSolver
 
 
 class SingleModeSystem(SystemSolver):
-    def __init__(self, params: Dict[str, float]) -> None:
+    def __init__(self, params: Dict[str, float], A_in=None) -> None:
+        """
+        Arguments:
+            A_in (function): takes in time t and returns np.ndarray
+        """
         super().__init__(params)
         self._A = None
         self._B = None
+        self.A_in = A_in if A_in else self.default_A_in
 
     def _param_validation(self):
         if "omega_a" not in self.params:
@@ -40,9 +45,9 @@ class SingleModeSystem(SystemSolver):
             self._B = B
         return self._B
 
-    def A_in(self, t: float):
+    def default_A_in(self, t: float):
         omega_a = self.params["omega_a"]
-        return np.exp(1j * omega_a * t)
+        return np.exp(1j * (omega_a * t))
 
     # Eval
     # =================================
