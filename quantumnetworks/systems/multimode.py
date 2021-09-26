@@ -13,15 +13,34 @@ class MultiModeSystem(SystemSolver):
         super().__init__(params)
         self._A = None
         self._B = None
-        self.load_data(str(self.params["dir"]))
+        if self.params["dir"] is not None:
+            self.load_data(str(self.params["dir"]))
 
     def _param_validation(self):
-        if "dir" not in self.params:
-            raise Exception(
-                "Please provide a `dir` param in which to find system paramters."
-            )
-        if "drives" not in self.params:
-            self.params["drives"] = {}
+        self.params["dir"] = self.params.get("dir")
+        self.params["drives"] = self.params.get("drives", {})
+        if self.params["dir"] is not None:
+            return
+
+        # If data isn't provided via txt, then we should expect
+        # direct inputs of omeags, kappas, couplings
+        self.params["omegas"] = np.array(self.params.get("omegas"))
+        if self.params["omegas"] is not None:
+            self.params["num_modes"] = self.params["omegas"].size
+        else:
+            raise Exception("Please provide an `omegas` param")
+
+        self.params["kappas"] = np.array(self.params.get("kappas"))
+        if self.params["kappas"] is not None:
+            self.params["num_drives"] = np.count_nonzero(self.params["kappas"])
+        else:
+            raise Exception("Please provide a `kappas` param")
+
+        couplings_raw = self.params.get("couplings")
+        if couplings_raw is not None:
+            self.params["couplings"] = self.parse_couplings(np.array(couplings_raw))
+        else:
+            raise Exception("Please provide a `couplings` param")
 
     # Load Data
     # =================================
@@ -46,6 +65,7 @@ class MultiModeSystem(SystemSolver):
 
         # coupling
         couplings_raw_data = self.load_file(dir + os.sep + "couplings.txt")
+        self.params["couplings"] = self.parse_couplings(couplings_raw_data)
         couplings = np.zeros((num_modes, num_modes))
         for row in couplings_raw_data:
             i = int(row[0])
@@ -53,6 +73,16 @@ class MultiModeSystem(SystemSolver):
             couplings[i, j] = row[2]
             couplings[j, i] = row[2]
         self.params["couplings"] = couplings
+
+    def parse_couplings(self, couplings_raw_data):
+        num_modes = self.params["num_modes"]
+        couplings = np.zeros((num_modes, num_modes))
+        for row in couplings_raw_data:
+            i = int(row[0])
+            j = int(row[1])
+            couplings[i, j] = row[2]
+            couplings[j, i] = row[2]
+        return couplings
 
     def load_file(self, filename):
         a = np.loadtxt(filename, delimiter=",")
