@@ -1,14 +1,14 @@
 """
 Base Analysis
 """
-from typing import Dict
+from typing import Dict, Any
 from abc import abstractmethod, ABCMeta
 import numpy as np
 import matplotlib.pyplot as plt
 
 
 class SystemSolver(metaclass=ABCMeta):
-    def __init__(self, params: Dict[str, float]) -> None:
+    def __init__(self, params: Dict[str, Any]) -> None:
         self.params = params
         self._param_validation()
 

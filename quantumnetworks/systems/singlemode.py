@@ -1,14 +1,14 @@
 """
 Driven Signle Mode System
 """
-from typing import Dict
+from typing import Dict, Any
 import numpy as np
 
 from quantumnetworks.analysis import SystemSolver
 
 
 class SingleModeSystem(SystemSolver):
-    def __init__(self, params: Dict[str, float], A_in=None) -> None:
+    def __init__(self, params: Dict[str, Any], A_in=None) -> None:
         """
         Arguments:
             A_in (function): takes in time t and returns np.ndarray
