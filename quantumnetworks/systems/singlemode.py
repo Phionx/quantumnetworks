@@ -1,5 +1,5 @@
 """
-Driven Signle Mode System
+Driven Single Mode Linear System
 """
 from typing import Dict, Any
 import numpy as np
@@ -33,7 +33,7 @@ class SingleModeSystem(SystemSolver):
             omega_a = self.params["omega_a"]
             kappa_a = self.params["kappa_a"]
 
-            A = np.array([[kappa_a / 2, omega_a], [-omega_a, kappa_a / 2]])
+            A = np.array([[-kappa_a / 2, omega_a], [-omega_a, -kappa_a / 2]])
             self._A = A
         return self._A
 
@@ -41,7 +41,7 @@ class SingleModeSystem(SystemSolver):
     def B(self):
         if self._B is None:
             kappa_a = self.params["kappa_a"]
-            B = np.array([[np.sqrt(kappa_a), 0], [0, np.sqrt(kappa_a)]])
+            B = np.array([[-np.sqrt(kappa_a), 0], [0, -np.sqrt(kappa_a)]])
             self._B = B
         return self._B
 

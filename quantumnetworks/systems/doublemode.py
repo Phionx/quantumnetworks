@@ -1,5 +1,5 @@
 """
-Driven Signle Mode System
+Driven Double-Mode Linear System with Beam-Splitter Coupling
 """
 from typing import Dict
 import numpy as np
@@ -21,13 +21,13 @@ class DoubleModeSystem(SystemSolver):
 
     def _param_validation(self):
         if "omega_a" not in self.params:
-            self.params["omega_a"] = 1  # Ghz
+            self.params["omega_a"] = 1  # GHz
         if "omega_b" not in self.params:
-            self.params["omega_b"] = 2  # Ghz
+            self.params["omega_b"] = 2  # GHz
         if "kappa_a" not in self.params:
-            self.params["kappa_a"] = 0.001  # Ghz
+            self.params["kappa_a"] = 0.001  # GHz
         if "kappa_b" not in self.params:
-            self.params["kappa_b"] = 0.005  # Ghz
+            self.params["kappa_b"] = 0.005  # GHz
         if "g_ab" not in self.params:
             self.params["g_ab"] = 0.002  # GHz
 
@@ -44,10 +44,10 @@ class DoubleModeSystem(SystemSolver):
             g_ab = self.params["g_ab"]
 
             A = np.zeros((4, 4))
-            A[0, 0] = kappa_a / 2
-            A[1, 1] = kappa_a / 2
-            A[2, 2] = kappa_b / 2
-            A[3, 3] = kappa_b / 2
+            A[0, 0] = -kappa_a / 2
+            A[1, 1] = -kappa_a / 2
+            A[2, 2] = -kappa_b / 2
+            A[3, 3] = -kappa_b / 2
 
             A[0, 1] = omega_a
             A[1, 0] = -omega_a
@@ -67,10 +67,10 @@ class DoubleModeSystem(SystemSolver):
             kappa_a = self.params["kappa_a"]
             kappa_b = self.params["kappa_b"]
             B = np.zeros((4, 4))
-            B[0, 0] = np.sqrt(kappa_a)
-            B[1, 1] = np.sqrt(kappa_a)
-            B[2, 2] = np.sqrt(kappa_b)
-            B[3, 3] = np.sqrt(kappa_b)
+            B[0, 0] = -np.sqrt(kappa_a)
+            B[1, 1] = -np.sqrt(kappa_a)
+            B[2, 2] = -np.sqrt(kappa_b)
+            B[3, 3] = -np.sqrt(kappa_b)
             self._B = B
         return self._B
 

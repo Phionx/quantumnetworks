@@ -1,5 +1,5 @@
 """
-Driven Signle Mode System
+Driven Multi-Mode Mode Linear System with Beam-Splitter Couplings
 """
 from typing import Dict, Any, List
 import numpy as np
@@ -108,8 +108,8 @@ class MultiModeSystem(SystemSolver):
 
             # kappas
             for i, kappa in enumerate(kappas):
-                A[2 * i, 2 * i] = kappa / 2
-                A[2 * i + 1, 2 * i + 1] = kappa / 2
+                A[2 * i, 2 * i] = -kappa / 2
+                A[2 * i + 1, 2 * i + 1] = -kappa / 2
 
             # couplings
             for i in range(couplings.shape[0]):
@@ -134,8 +134,8 @@ class MultiModeSystem(SystemSolver):
             B = np.zeros((num_modes * 2, num_drives * 2))
             for i, kappa in enumerate(kappas):
                 if kappa != 0:
-                    B[2 * i, 2 * i] = np.sqrt(kappa)
-                    B[2 * i + 1, 2 * i + 1] = np.sqrt(kappa)
+                    B[2 * i, 2 * i] = -np.sqrt(kappa)
+                    B[2 * i + 1, 2 * i + 1] = -np.sqrt(kappa)
 
             self._B = B
         return self._B
