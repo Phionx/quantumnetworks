@@ -48,24 +48,24 @@ class MultiModeSystem(SystemSolver):
 
     # Load Data
     # =================================
-    def load_data(self, dir: str) -> None:
+    def load_data(self, folder: str) -> None:
         # omegas
-        omegas_raw_data = self.load_file(dir + os.sep + "omegas.txt")
+        omegas_raw_data = self.load_file(folder + os.sep + "omegas.txt")
         num_modes = omegas_raw_data.shape[0]
         self.params["num_modes"] = num_modes
         self.params["omegas"] = self.load_raw_dict_to_list(omegas_raw_data, num_modes)
 
         # kappas
-        kappas_raw_data = self.load_file(dir + os.sep + "kappas.txt")
+        kappas_raw_data = self.load_file(folder + os.sep + "kappas.txt")
         self.params["kappas"] = self.load_raw_dict_to_list(kappas_raw_data, num_modes)
         self.params["num_drives"] = np.count_nonzero(self.params["kappas"])
 
         # gammas
-        gammas_raw_data = self.load_file(dir + os.sep + "gammas.txt")
+        gammas_raw_data = self.load_file(folder + os.sep + "gammas.txt")
         self.params["gammas"] = self.load_raw_dict_to_list(gammas_raw_data, num_modes)
 
         # coupling
-        couplings_raw_data = self.load_file(dir + os.sep + "couplings.txt")
+        couplings_raw_data = self.load_file(folder + os.sep + "couplings.txt")
         self.params["couplings"] = self.parse_couplings(couplings_raw_data)
         couplings = np.zeros((num_modes, num_modes))
         for row in couplings_raw_data:
@@ -170,8 +170,8 @@ class MultiModeSystem(SystemSolver):
                 else:
                     drive = self.default_drive
                 drive_vec += [np.real(drive(t)), np.imag(drive(t))]
-        drive_vec = np.array(drive_vec)
-        u = self.B.dot(drive_vec)
+        drive_array = np.array(drive_vec)
+        u = self.B.dot(drive_array)
         return u
 
     def eval_Jf(self, x: np.ndarray, u: np.ndarray) -> np.ndarray:
