@@ -19,8 +19,14 @@ class MultiModeTest(unittest.TestCase):
         omegas = [1, 2]
         kappas = [0.001, 0.005]
         couplings = [[0, 1, 0.002]]
+        gammas = [0.002, 0.002]
         system = MultiModeSystem(
-            params={"omegas": omegas, "kappas": kappas, "couplings": couplings}
+            params={
+                "omegas": omegas,
+                "kappas": kappas,
+                "gammas": gammas,
+                "couplings": couplings,
+            }
         )
         x_0 = np.array([1, 0, 0, 1])
         ts = np.linspace(0, 10, 100001)
@@ -35,9 +41,15 @@ class MultiModeTest(unittest.TestCase):
     def test_analytic_vs_numerical_Jf(self):
         omegas = [1, 2]
         kappas = [0.001, 0.005]
+        gammas = [0.002, 0.002]
         couplings = [[0, 1, 0.002]]
         system = MultiModeSystem(
-            params={"omegas": omegas, "kappas": kappas, "couplings": couplings}
+            params={
+                "omegas": omegas,
+                "kappas": kappas,
+                "gammas": gammas,
+                "couplings": couplings,
+            }
         )
         x_0 = np.array([1, 0, 0, 1])
 

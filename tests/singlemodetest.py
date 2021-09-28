@@ -16,7 +16,7 @@ import numpy as np
 
 class SingleModeTest(unittest.TestCase):
     def setUp(self) -> None:
-        self.params = {"omega_a": 1, "kappa_a": 0.001}
+        self.params = {"omega_a": 1, "kappa_a": 0.001, "gamma_a": 0.002}
 
     def test_forward_euler_no_A_in(self):
         A_in = lambda t: 0

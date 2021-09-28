@@ -23,6 +23,8 @@ class SingleModeSystem(SystemSolver):
             self.params["omega_a"] = 1  # Ghz
         if "kappa_a" not in self.params:
             self.params["kappa_a"] = 0.001  # Ghz
+        if "gamma_a" not in self.params:
+            self.params["gamma_a"] = 0.002
 
     # Known System Parameters and Load
     # =================================
@@ -32,8 +34,13 @@ class SingleModeSystem(SystemSolver):
         if self._A is None:
             omega_a = self.params["omega_a"]
             kappa_a = self.params["kappa_a"]
-
-            A = np.array([[-kappa_a / 2, omega_a], [-omega_a, -kappa_a / 2]])
+            gamma_a = self.params["gamma_a"]
+            A = np.array(
+                [
+                    [-kappa_a / 2 - gamma_a / 2, omega_a],
+                    [-omega_a, -kappa_a / 2 - gamma_a / 2],
+                ]
+            )
             self._A = A
         return self._A
 

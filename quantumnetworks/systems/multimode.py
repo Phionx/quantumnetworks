@@ -36,6 +36,10 @@ class MultiModeSystem(SystemSolver):
         else:
             raise Exception("Please provide a `kappas` param")
 
+        self.params["gammas"] = np.array(self.params.get("gammas"))
+        if self.params["gammas"] is None:
+            raise Exception("Please provide a `gammas` param")
+
         couplings_raw = self.params.get("couplings")
         if couplings_raw is not None:
             self.params["couplings"] = self.parse_couplings(np.array(couplings_raw))
@@ -47,21 +51,18 @@ class MultiModeSystem(SystemSolver):
     def load_data(self, dir: str) -> None:
         # omegas
         omegas_raw_data = self.load_file(dir + os.sep + "omegas.txt")
-        omegas = np.zeros(omegas_raw_data.shape[0])
-        for row in omegas_raw_data:
-            omegas[int(row[0])] = row[1]
-        self.params["omegas"] = omegas
-        num_modes = omegas.size
+        num_modes = omegas_raw_data.shape[0]
         self.params["num_modes"] = num_modes
+        self.params["omegas"] = self.load_raw_dict_to_list(omegas_raw_data, num_modes)
 
         # kappas
         kappas_raw_data = self.load_file(dir + os.sep + "kappas.txt")
-        kappas = np.zeros(num_modes)
-        for row in kappas_raw_data:
-            i = int(row[0])
-            kappas[i] = row[1]
-        self.params["kappas"] = kappas
-        self.params["num_drives"] = np.count_nonzero(kappas)
+        self.params["kappas"] = self.load_raw_dict_to_list(kappas_raw_data, num_modes)
+        self.params["num_drives"] = np.count_nonzero(self.params["kappas"])
+
+        # gammas
+        gammas_raw_data = self.load_file(dir + os.sep + "gammas.txt")
+        self.params["gammas"] = self.load_raw_dict_to_list(gammas_raw_data, num_modes)
 
         # coupling
         couplings_raw_data = self.load_file(dir + os.sep + "couplings.txt")
@@ -89,6 +90,13 @@ class MultiModeSystem(SystemSolver):
         if len(a.shape) == 1:
             return a.reshape((-1, a.size))
         return a
+
+    def load_raw_dict_to_list(self, raw_data, length):
+        data = np.zeros(length)
+        for row in raw_data:
+            i = int(row[0])
+            data[i] = row[1]
+        return data
 
     # Known System Parameters and Load
     # =================================

@@ -28,6 +28,10 @@ class DoubleModeSystem(SystemSolver):
             self.params["kappa_a"] = 0.001  # GHz
         if "kappa_b" not in self.params:
             self.params["kappa_b"] = 0.005  # GHz
+        if "gamma_a" not in self.params:
+            self.params["gamma_a"] = 0.002  # GHz
+        if "gamma_b" not in self.params:
+            self.params["gamma_b"] = 0.002  # GHz
         if "g_ab" not in self.params:
             self.params["g_ab"] = 0.002  # GHz
 
