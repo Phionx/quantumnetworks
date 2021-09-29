@@ -36,6 +36,10 @@ class MultiModeSystem(SystemSolver):
         else:
             raise Exception("Please provide a `kappas` param")
 
+        self.params["gammas"] = np.array(self.params.get("gammas"))
+        if self.params["gammas"] is None:
+            raise Exception("Please provide a `gammas` param")
+
         couplings_raw = self.params.get("couplings")
         if couplings_raw is not None:
             self.params["couplings"] = self.parse_couplings(np.array(couplings_raw))
@@ -44,27 +48,24 @@ class MultiModeSystem(SystemSolver):
 
     # Load Data
     # =================================
-    def load_data(self, dir: str) -> None:
+    def load_data(self, folder: str) -> None:
         # omegas
-        omegas_raw_data = self.load_file(dir + os.sep + "omegas.txt")
-        omegas = np.zeros(omegas_raw_data.shape[0])
-        for row in omegas_raw_data:
-            omegas[int(row[0])] = row[1]
-        self.params["omegas"] = omegas
-        num_modes = omegas.size
+        omegas_raw_data = self.load_file(folder + os.sep + "omegas.txt")
+        num_modes = omegas_raw_data.shape[0]
         self.params["num_modes"] = num_modes
+        self.params["omegas"] = self.load_raw_dict_to_list(omegas_raw_data, num_modes)
 
         # kappas
-        kappas_raw_data = self.load_file(dir + os.sep + "kappas.txt")
-        kappas = np.zeros(num_modes)
-        for row in kappas_raw_data:
-            i = int(row[0])
-            kappas[i] = row[1]
-        self.params["kappas"] = kappas
-        self.params["num_drives"] = np.count_nonzero(kappas)
+        kappas_raw_data = self.load_file(folder + os.sep + "kappas.txt")
+        self.params["kappas"] = self.load_raw_dict_to_list(kappas_raw_data, num_modes)
+        self.params["num_drives"] = np.count_nonzero(self.params["kappas"])
+
+        # gammas
+        gammas_raw_data = self.load_file(folder + os.sep + "gammas.txt")
+        self.params["gammas"] = self.load_raw_dict_to_list(gammas_raw_data, num_modes)
 
         # coupling
-        couplings_raw_data = self.load_file(dir + os.sep + "couplings.txt")
+        couplings_raw_data = self.load_file(folder + os.sep + "couplings.txt")
         self.params["couplings"] = self.parse_couplings(couplings_raw_data)
         couplings = np.zeros((num_modes, num_modes))
         for row in couplings_raw_data:
@@ -90,6 +91,13 @@ class MultiModeSystem(SystemSolver):
             return a.reshape((-1, a.size))
         return a
 
+    def load_raw_dict_to_list(self, raw_data, length):
+        data = np.zeros(length)
+        for row in raw_data:
+            i = int(row[0])
+            data[i] = row[1]
+        return data
+
     # Known System Parameters and Load
     # =================================
     @property
@@ -98,28 +106,32 @@ class MultiModeSystem(SystemSolver):
             num_modes = self.params["num_modes"]
             omegas = self.params["omegas"]
             kappas = self.params["kappas"]
+            gammas = self.params["gammas"]
             couplings = self.params["couplings"]
             A = np.zeros((num_modes * 2, num_modes * 2))
 
             # omegas
             for i, omega in enumerate(omegas):
-                A[2 * i, 2 * i + 1] = omega
-                A[2 * i + 1, 2 * i] = -omega
+                A[2 * i, 2 * i + 1] += omega
+                A[2 * i + 1, 2 * i] += -omega
 
             # kappas
             for i, kappa in enumerate(kappas):
-                A[2 * i, 2 * i] = -kappa / 2
-                A[2 * i + 1, 2 * i + 1] = -kappa / 2
+                A[2 * i, 2 * i] += -kappa / 2
+                A[2 * i + 1, 2 * i + 1] += -kappa / 2
+
+            # gammas
+            for i, gamma in enumerate(gammas):
+                A[2 * i, 2 * i] += -gamma / 2
+                A[2 * i + 1, 2 * i + 1] += -gamma / 2
 
             # couplings
             for i in range(couplings.shape[0]):
                 for j in range(couplings.shape[1]):
                     if i != j:
                         g_ij = couplings[i, j]
-                        A[2 * i, 2 * j + 1] = g_ij
-                        A[2 * i + 1, 2 * j] = -g_ij
-                        A[2 * j, 2 * i + 1] = g_ij
-                        A[2 * j + 1, 2 * i] = -g_ij
+                        A[2 * i, 2 * j + 1] += g_ij
+                        A[2 * i + 1, 2 * j] += -g_ij
 
             self._A = A
         return self._A
@@ -162,8 +174,8 @@ class MultiModeSystem(SystemSolver):
                 else:
                     drive = self.default_drive
                 drive_vec += [np.real(drive(t)), np.imag(drive(t))]
-        drive_vec = np.array(drive_vec)
-        u = self.B.dot(drive_vec)
+        drive_array = np.array(drive_vec)
+        u = self.B.dot(drive_array)
         return u
 
     def eval_Jf(self, x: np.ndarray, u: np.ndarray) -> np.ndarray:

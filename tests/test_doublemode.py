@@ -1,7 +1,8 @@
 """
 Unittests
 
-Run using: python -m unittest tests/doublemodetest.py
+Run using: 
+python -m unittest tests/test_doublemode.py
 """
 import os
 import sys
