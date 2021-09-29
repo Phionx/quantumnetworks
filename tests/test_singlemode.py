@@ -1,7 +1,8 @@
 """
 Unittests
 
-Run using: python -m unittest tests/singlemodetest.py
+Run using: 
+python -m unittest tests/test_singlemode.py
 """
 import os
 import sys

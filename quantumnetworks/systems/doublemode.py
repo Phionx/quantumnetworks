@@ -43,15 +43,18 @@ class DoubleModeSystem(SystemSolver):
         if self._A is None:
             omega_a = self.params["omega_a"]
             kappa_a = self.params["kappa_a"]
+            gamma_a = self.params["gamma_a"]
             omega_b = self.params["omega_b"]
             kappa_b = self.params["kappa_b"]
+            gamma_b = self.params["gamma_b"]
+
             g_ab = self.params["g_ab"]
 
             A = np.zeros((4, 4))
-            A[0, 0] = -kappa_a / 2
-            A[1, 1] = -kappa_a / 2
-            A[2, 2] = -kappa_b / 2
-            A[3, 3] = -kappa_b / 2
+            A[0, 0] = -kappa_a / 2 - gamma_a / 2
+            A[1, 1] = -kappa_a / 2 - gamma_a / 2
+            A[2, 2] = -kappa_b / 2 - gamma_b / 2
+            A[3, 3] = -kappa_b / 2 - gamma_b / 2
 
             A[0, 1] = omega_a
             A[1, 0] = -omega_a

@@ -106,28 +106,32 @@ class MultiModeSystem(SystemSolver):
             num_modes = self.params["num_modes"]
             omegas = self.params["omegas"]
             kappas = self.params["kappas"]
+            gammas = self.params["gammas"]
             couplings = self.params["couplings"]
             A = np.zeros((num_modes * 2, num_modes * 2))
 
             # omegas
             for i, omega in enumerate(omegas):
-                A[2 * i, 2 * i + 1] = omega
-                A[2 * i + 1, 2 * i] = -omega
+                A[2 * i, 2 * i + 1] += omega
+                A[2 * i + 1, 2 * i] += -omega
 
             # kappas
             for i, kappa in enumerate(kappas):
-                A[2 * i, 2 * i] = -kappa / 2
-                A[2 * i + 1, 2 * i + 1] = -kappa / 2
+                A[2 * i, 2 * i] += -kappa / 2
+                A[2 * i + 1, 2 * i + 1] += -kappa / 2
+
+            # gammas
+            for i, gamma in enumerate(gammas):
+                A[2 * i, 2 * i] += -gamma / 2
+                A[2 * i + 1, 2 * i + 1] += -gamma / 2
 
             # couplings
             for i in range(couplings.shape[0]):
                 for j in range(couplings.shape[1]):
                     if i != j:
                         g_ij = couplings[i, j]
-                        A[2 * i, 2 * j + 1] = g_ij
-                        A[2 * i + 1, 2 * j] = -g_ij
-                        A[2 * j, 2 * i + 1] = g_ij
-                        A[2 * j + 1, 2 * i] = -g_ij
+                        A[2 * i, 2 * j + 1] += g_ij
+                        A[2 * i + 1, 2 * j] += -g_ij
 
             self._A = A
         return self._A
