@@ -169,7 +169,7 @@ class MultiModeSystem(SystemSolver):
 
     # Nonlinear
     # =================================
-    def A_nl(self, x: np.ndarray):
+    def f_nl(self, x: np.ndarray):
         """
         Nonlinear part of eq of motion
         """
@@ -186,7 +186,7 @@ class MultiModeSystem(SystemSolver):
             non_linearity[pi] = -2 * K * (q ** 2 + p ** 2) * q
         return non_linearity
 
-    def A_nl_Jf(self, x: np.ndarray):
+    def Jf_nl(self, x: np.ndarray):
         """
         Jacobian of nonlinear part of eq of motion
         """
@@ -210,7 +210,7 @@ class MultiModeSystem(SystemSolver):
     # =================================
 
     def eval_f(self, x: np.ndarray, u: np.ndarray) -> np.ndarray:
-        f = self.A.dot(x) + self.A_nl(x) + u
+        f = self.A.dot(x) + self.f_nl(x) + u
         return f
 
     def eval_u(self, t: float):
@@ -230,4 +230,4 @@ class MultiModeSystem(SystemSolver):
         return u
 
     def eval_Jf(self, x: np.ndarray, u: np.ndarray) -> np.ndarray:
-        return self.A + self.A_nl_Jf(x)
+        return self.A + self.Jf_nl(x)
