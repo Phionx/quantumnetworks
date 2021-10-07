@@ -32,6 +32,10 @@ class DoubleModeSystem(SystemSolver):
             self.params["gamma_a"] = 0.002  # GHz
         if "gamma_b" not in self.params:
             self.params["gamma_b"] = 0.002  # GHz
+        if "kerr_a" not in self.params:
+            self.params["kerr_a"] = 0.001  # GHz
+        if "kerr_b" not in self.params:
+            self.params["kerr_b"] = 0.001  # GHz
         if "g_ab" not in self.params:
             self.params["g_ab"] = 0.002  # GHz
 
@@ -89,11 +93,54 @@ class DoubleModeSystem(SystemSolver):
         omega_b = self.params["omega_b"]
         return np.exp(1j * (omega_b * t))
 
+    # Nonlinear
+    # =================================
+    def A_nl(self, x: np.ndarray):
+        """
+        Nonlinear part of eq of motion
+        """
+        K_a = self.params["kerr_a"]
+        K_b = self.params["kerr_b"]
+        Ks = [K_a, K_b]
+
+        non_linearity = np.zeros_like(x)
+        for mode in [0, 1]:
+            qi = 0 + mode * 2
+            pi = 1 + mode * 2
+            q = x[qi]
+            p = x[pi]
+            K = Ks[mode]
+            non_linearity[qi] = 2 * K * (q ** 2 + p ** 2) * p
+            non_linearity[pi] = -2 * K * (q ** 2 + p ** 2) * q
+        return non_linearity
+
+    def A_nl_Jf(self, x: np.ndarray):
+        """
+        Jacobian of nonlinear part of eq of motion
+        """
+        K_a = self.params["kerr_a"]
+        K_b = self.params["kerr_b"]
+        Ks = [K_a, K_b]
+
+        nonlinear_Jf = np.zeros((x.size, x.size))
+
+        for mode in [0, 1]:
+            qi = 0 + mode * 2
+            pi = 1 + mode * 2
+            q = x[qi]
+            p = x[pi]
+            K = Ks[mode]
+            nonlinear_Jf[qi][qi] = 4 * K * q * p
+            nonlinear_Jf[qi][pi] = 2 * K * (q ** 2 + p ** 2) + 4 * K * p ** 2
+            nonlinear_Jf[pi][qi] = -2 * K * (q ** 2 + p ** 2) - 4 * K * q ** 2
+            nonlinear_Jf[pi][pi] = -4 * K * q * p
+        return nonlinear_Jf
+
     # Eval
     # =================================
 
     def eval_f(self, x: np.ndarray, u: np.ndarray) -> np.ndarray:
-        f = self.A.dot(x) + u
+        f = self.A.dot(x) + self.A_nl(x) + u
         return f
 
     def eval_u(self, t: float):
@@ -104,4 +151,4 @@ class DoubleModeSystem(SystemSolver):
         return u
 
     def eval_Jf(self, x: np.ndarray, u: np.ndarray) -> np.ndarray:
-        return self.A
+        return self.A + self.A_nl_Jf(x)

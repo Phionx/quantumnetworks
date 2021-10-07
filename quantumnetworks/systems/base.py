@@ -4,7 +4,6 @@ Base Analysis
 from typing import Dict, Any
 from abc import abstractmethod, ABCMeta
 import numpy as np
-import matplotlib.pyplot as plt
 
 
 class SystemSolver(metaclass=ABCMeta):
@@ -28,9 +27,16 @@ class SystemSolver(metaclass=ABCMeta):
     def eval_Jf(self, x: np.ndarray, u: np.ndarray) -> np.ndarray:
         pass
 
-    def eval_Jf_numerical(
-        self, x: np.ndarray, u: np.ndarray, dx: float = 0.01
+    def eval_f_linear(
+        self, x: np.ndarray, u: np.ndarray, x0: np.ndarray, u0: np.ndarray
     ) -> np.ndarray:
+        # df/du = 1.0 in our case
+        return self.eval_f(x0, u0) + self.eval_Jf(x0, u0).dot(x - x0) + 1.0 * (u - u0)
+
+    def eval_Jf_numerical(
+        self, x: np.ndarray, u: np.ndarray, dx: float = 1e-7
+    ) -> np.ndarray:
+        x = x.astype(float)
         f = self.eval_f(x, u)
         J = np.zeros((x.size, x.size))
         for i, _ in enumerate(x):
@@ -42,12 +48,25 @@ class SystemSolver(metaclass=ABCMeta):
             J[:, i] = delta_f / dx
         return J
 
-    def forward_euler(self, x_0: np.ndarray, ts: np.ndarray):
-        X = 1.0 * np.zeros((x_0.size, ts.size))
-        X[:, 0] = x_0
+    def forward_euler(self, x_start: np.ndarray, ts: np.ndarray):
+        x_start = x_start.astype(float)
+        X = 1.0 * np.zeros((x_start.size, ts.size))
+        X[:, 0] = x_start
         dt = ts[1] - ts[0]
         for i, t in enumerate(ts[:-1]):
             u = self.eval_u(t)
             f = self.eval_f(X[:, i], u)
+            X[:, i + 1] = X[:, i] + dt * f
+        return X
+
+    def forward_euler_linear(
+        self, x_start: np.ndarray, ts: np.ndarray, x0: np.ndarray, u0: np.ndarray
+    ):
+        X = 1.0 * np.zeros((x_start.size, ts.size))
+        X[:, 0] = x_start
+        dt = ts[1] - ts[0]
+        for i, t in enumerate(ts[:-1]):
+            u = self.eval_u(t)
+            f = self.eval_f_linear(X[:, i], u, x0, u0)
             X[:, i + 1] = X[:, i] + dt * f
         return X

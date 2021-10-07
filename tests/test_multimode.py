@@ -21,11 +21,13 @@ class MultiModeTest(unittest.TestCase):
         kappas = [0.001, 0.005]
         couplings = [[0, 1, 0.002]]
         gammas = [0.002, 0.002]
+        kerrs = [0.01, 0.01]
         system = MultiModeSystem(
             params={
                 "omegas": omegas,
                 "kappas": kappas,
                 "gammas": gammas,
+                "kerrs": kerrs,
                 "couplings": couplings,
             }
         )
@@ -43,12 +45,14 @@ class MultiModeTest(unittest.TestCase):
         omegas = [1, 2]
         kappas = [0.001, 0.005]
         gammas = [0.002, 0.002]
+        kerrs = [0.01, 0.01]
         couplings = [[0, 1, 0.002]]
         system = MultiModeSystem(
             params={
                 "omegas": omegas,
                 "kappas": kappas,
                 "gammas": gammas,
+                "kerrs": kerrs,
                 "couplings": couplings,
             }
         )
@@ -63,6 +67,7 @@ class MultiModeTest(unittest.TestCase):
         omegas = [1, 2]
         kappas = [0.001, 0.005]
         gammas = [0.002, 0.002]
+        kerrs = [0.01, 0.01]
         couplings = [[0, 1, 0.002]]
 
         system = MultiModeSystem(
@@ -70,6 +75,7 @@ class MultiModeTest(unittest.TestCase):
                 "omegas": omegas,
                 "kappas": kappas,
                 "gammas": gammas,
+                "kerrs": kerrs,
                 "couplings": couplings,
             }
         )
@@ -81,6 +87,8 @@ class MultiModeTest(unittest.TestCase):
                 "omega_b": 2,
                 "kappa_a": 0.001,
                 "kappa_b": 0.005,
+                "kerr_a": 0.01,
+                "kerr_b": 0.01,
                 "gamma_a": 0.002,
                 "gamma_b": 0.002,
                 "g_ab": 0.002,
@@ -96,6 +104,7 @@ class MultiModeTest(unittest.TestCase):
         omegas = [1]
         kappas = [0.001]
         gammas = [0.002]
+        kerrs = [0.01]
         couplings = []
 
         system = MultiModeSystem(
@@ -103,16 +112,52 @@ class MultiModeTest(unittest.TestCase):
                 "omegas": omegas,
                 "kappas": kappas,
                 "gammas": gammas,
+                "kerrs": kerrs,
                 "couplings": couplings,
             }
         )
         A_in = lambda t: 0
         system_double = SingleModeSystem(
-            params={"omega_a": 1, "kappa_a": 0.001, "gamma_a": 0.002}, A_in=A_in,
+            params={"omega_a": 1, "kappa_a": 0.001, "gamma_a": 0.002, "kerr_a": 0.01},
+            A_in=A_in,
         )
 
         self.assertTrue(np.array_equal(system.A, system_double.A))
         self.assertTrue(np.array_equal(system.B, system_double.B))
+
+    def test_linearization(self):
+        omegas = [1, 2, 1]
+        kappas = [0.001, 0.005, 0.001]
+        gammas = [0.002, 0.002, 0.002]
+        kerrs = [0.001, 0.001, 0.001]
+        couplings = [[0, 1, 0.002], [1, 2, 0.002]]
+        sys = MultiModeSystem(
+            params={
+                "omegas": omegas,
+                "kappas": kappas,
+                "gammas": gammas,
+                "kerrs": kerrs,
+                "couplings": couplings,
+            }
+        )
+
+        x_0 = np.array([1, 0, 0, 1, 1, 0])
+        n = 100000
+        ts = np.linspace(0, 10, n + 1)
+
+        X = sys.forward_euler(x_0, ts)
+        X_linear = sys.forward_euler_linear(x_0, ts, x_0, 0)
+
+        # take beginning of sequences
+        X_linear_i = X_linear[:, : n // 20]
+        X_i = X[:, : n // 20]
+
+        # filter to prevent divide by 0 errors
+        X_linear_i = X_linear_i[X_i != 0]
+        X_i = X_i[X_i != 0]
+
+        max_perc_diff = np.max(np.abs((X_i - X_linear_i) / X_i))
+        self.assertTrue(max_perc_diff < 0.01)  # within 1%
 
 
 #%%
