@@ -25,6 +25,8 @@ class SingleModeSystem(SystemSolver):
             self.params["kappa_a"] = 0.001  # Ghz
         if "gamma_a" not in self.params:
             self.params["gamma_a"] = 0.002
+        if "kerr_a" not in self.params:
+            self.params["kerr_a"] = 0.001  # GHz
 
     # Known System Parameters and Load
     # =================================
@@ -56,11 +58,41 @@ class SingleModeSystem(SystemSolver):
         omega_a = self.params["omega_a"]
         return np.exp(1j * (omega_a * t))
 
+    # Nonlinear
+    # =================================
+    def f_nl(self, x: np.ndarray):
+        """
+        Nonlinear part of eq of motion
+        """
+        K = self.params["kerr_a"]
+        non_linearity = np.zeros_like(x)
+        q = x[0]
+        p = x[1]
+        non_linearity[0] = 2 * K * (q ** 2 + p ** 2) * p
+        non_linearity[1] = -2 * K * (q ** 2 + p ** 2) * q
+
+        return non_linearity
+
+    def Jf_nl(self, x: np.ndarray):
+        """
+        Jacobian of nonlinear part of eq of motion
+        """
+        K = self.params["kerr_a"]
+        nonlinear_Jf = np.zeros((x.size, x.size))
+        q = x[0]
+        p = x[1]
+        nonlinear_Jf[0][0] = 4 * K * q * p
+        nonlinear_Jf[0][1] = 2 * K * (q ** 2 + p ** 2) + 4 * K * p ** 2
+        nonlinear_Jf[1][0] = -2 * K * (q ** 2 + p ** 2) - 4 * K * q ** 2
+        nonlinear_Jf[1][1] = -4 * K * q * p
+
+        return nonlinear_Jf
+
     # Eval
     # =================================
 
     def eval_f(self, x: np.ndarray, u: np.ndarray) -> np.ndarray:
-        f = self.A.dot(x) + u
+        f = self.A.dot(x) + self.f_nl(x) + u
         return f
 
     def eval_u(self, t: float):
@@ -70,4 +102,4 @@ class SingleModeSystem(SystemSolver):
         return u
 
     def eval_Jf(self, x: np.ndarray, u: np.ndarray) -> np.ndarray:
-        return self.A
+        return self.A + self.Jf_nl(x)

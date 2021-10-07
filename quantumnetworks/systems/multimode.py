@@ -24,21 +24,29 @@ class MultiModeSystem(SystemSolver):
 
         # If data isn't provided via txt, then we should expect
         # direct inputs of omeags, kappas, couplings
-        self.params["omegas"] = np.array(self.params.get("omegas"))
-        if self.params["omegas"] is not None:
+        omegas = self.params.get("omegas")
+        if omegas is not None:
+            self.params["omegas"] = np.array(omegas)
             self.params["num_modes"] = self.params["omegas"].size
         else:
             raise Exception("Please provide an `omegas` param")
 
-        self.params["kappas"] = np.array(self.params.get("kappas"))
-        if self.params["kappas"] is not None:
+        kappas = self.params.get("kappas")
+        if kappas is not None:
+            self.params["kappas"] = np.array(kappas)
             self.params["num_drives"] = np.count_nonzero(self.params["kappas"])
         else:
             raise Exception("Please provide a `kappas` param")
 
-        self.params["gammas"] = np.array(self.params.get("gammas"))
-        if self.params["gammas"] is None:
+        gammas = self.params.get("gammas")
+        if gammas is None:
             raise Exception("Please provide a `gammas` param")
+        self.params["gammas"] = np.array(gammas)
+
+        kerrs = self.params.get("kerrs")
+        if kerrs is None:
+            raise Exception("Please provide a `kerrs` param")
+        self.params["kerrs"] = np.array(kerrs)
 
         couplings_raw = self.params.get("couplings")
         if couplings_raw is not None:
@@ -63,6 +71,10 @@ class MultiModeSystem(SystemSolver):
         # gammas
         gammas_raw_data = self.load_file(folder + os.sep + "gammas.txt")
         self.params["gammas"] = self.load_raw_dict_to_list(gammas_raw_data, num_modes)
+
+        # kerrs
+        kerrs_raw_data = self.load_file(folder + os.sep + "kerrs.txt")
+        self.params["kerrs"] = self.load_raw_dict_to_list(kerrs_raw_data, num_modes)
 
         # coupling
         couplings_raw_data = self.load_file(folder + os.sep + "couplings.txt")
@@ -155,11 +167,50 @@ class MultiModeSystem(SystemSolver):
     def default_drive(self, _t):
         return 0
 
+    # Nonlinear
+    # =================================
+    def f_nl(self, x: np.ndarray):
+        """
+        Nonlinear part of eq of motion
+        """
+        Ks = self.params["kerrs"]
+
+        non_linearity = np.zeros_like(x)
+        for mode in range(self.params["num_modes"]):
+            qi = 0 + mode * 2
+            pi = 1 + mode * 2
+            q = x[qi]
+            p = x[pi]
+            K = Ks[mode]
+            non_linearity[qi] = 2 * K * (q ** 2 + p ** 2) * p
+            non_linearity[pi] = -2 * K * (q ** 2 + p ** 2) * q
+        return non_linearity
+
+    def Jf_nl(self, x: np.ndarray):
+        """
+        Jacobian of nonlinear part of eq of motion
+        """
+        Ks = self.params["kerrs"]
+
+        nonlinear_Jf = np.zeros((x.size, x.size))
+
+        for mode in range(self.params["num_modes"]):
+            qi = 0 + mode * 2
+            pi = 1 + mode * 2
+            q = x[qi]
+            p = x[pi]
+            K = Ks[mode]
+            nonlinear_Jf[qi][qi] = 4 * K * q * p
+            nonlinear_Jf[qi][pi] = 2 * K * (q ** 2 + p ** 2) + 4 * K * p ** 2
+            nonlinear_Jf[pi][qi] = -2 * K * (q ** 2 + p ** 2) - 4 * K * q ** 2
+            nonlinear_Jf[pi][pi] = -4 * K * q * p
+        return nonlinear_Jf
+
     # Eval
     # =================================
 
     def eval_f(self, x: np.ndarray, u: np.ndarray) -> np.ndarray:
-        f = self.A.dot(x) + u
+        f = self.A.dot(x) + self.f_nl(x) + u
         return f
 
     def eval_u(self, t: float):
@@ -179,4 +230,4 @@ class MultiModeSystem(SystemSolver):
         return u
 
     def eval_Jf(self, x: np.ndarray, u: np.ndarray) -> np.ndarray:
-        return self.A
+        return self.A + self.Jf_nl(x)
