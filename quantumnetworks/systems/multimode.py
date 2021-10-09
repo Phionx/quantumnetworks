@@ -23,7 +23,7 @@ class MultiModeSystem(SystemSolver):
             return
 
         # If data isn't provided via txt, then we should expect
-        # direct inputs of omeags, kappas, couplings
+        # direct inputs of omegas, kappas, couplings (all in GHz)
         omegas = self.params.get("omegas")
         if omegas is not None:
             self.params["omegas"] = np.array(omegas)
@@ -57,26 +57,26 @@ class MultiModeSystem(SystemSolver):
     # Load Data
     # =================================
     def load_data(self, folder: str) -> None:
-        # omegas
+        # omegas (in GHz)
         omegas_raw_data = self.load_file(folder + os.sep + "omegas.txt")
         num_modes = omegas_raw_data.shape[0]
         self.params["num_modes"] = num_modes
         self.params["omegas"] = self.load_raw_dict_to_list(omegas_raw_data, num_modes)
 
-        # kappas
+        # kappas (in GHz)
         kappas_raw_data = self.load_file(folder + os.sep + "kappas.txt")
         self.params["kappas"] = self.load_raw_dict_to_list(kappas_raw_data, num_modes)
         self.params["num_drives"] = np.count_nonzero(self.params["kappas"])
 
-        # gammas
+        # gammas (in GHz)
         gammas_raw_data = self.load_file(folder + os.sep + "gammas.txt")
         self.params["gammas"] = self.load_raw_dict_to_list(gammas_raw_data, num_modes)
 
-        # kerrs
+        # kerrs (in GHz)
         kerrs_raw_data = self.load_file(folder + os.sep + "kerrs.txt")
         self.params["kerrs"] = self.load_raw_dict_to_list(kerrs_raw_data, num_modes)
 
-        # coupling
+        # coupling (in GHz)
         couplings_raw_data = self.load_file(folder + os.sep + "couplings.txt")
         self.params["couplings"] = self.parse_couplings(couplings_raw_data)
         couplings = np.zeros((num_modes, num_modes))

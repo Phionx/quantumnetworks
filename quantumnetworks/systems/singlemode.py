@@ -20,11 +20,11 @@ class SingleModeSystem(SystemSolver):
 
     def _param_validation(self):
         if "omega_a" not in self.params:
-            self.params["omega_a"] = 1  # Ghz
+            self.params["omega_a"] = 1  # GHz
         if "kappa_a" not in self.params:
-            self.params["kappa_a"] = 0.001  # Ghz
+            self.params["kappa_a"] = 0.001  # GHz
         if "gamma_a" not in self.params:
-            self.params["gamma_a"] = 0.002
+            self.params["gamma_a"] = 0.002  # GHz
         if "kerr_a" not in self.params:
             self.params["kerr_a"] = 0.001  # GHz
 
