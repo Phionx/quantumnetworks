@@ -39,7 +39,7 @@ class SystemQuantity(metaclass=ABCMeta):
         q_new = self.calculate(xs_new)
 
         # finite difference
-        dqdp = (q_new - q) / dp
+        dqdp_i = (q_new - q) / dp
 
         # reset params
         if param_indx is None:
@@ -47,14 +47,14 @@ class SystemQuantity(metaclass=ABCMeta):
         else:
             self.system.params[param_name][param_indx] = val
 
-        return dqdp
+        return dqdp_i
 
     @abstractmethod
-    def calculate(self, xs: np.ndarrary) -> np.ndarray:
+    def calculate(self, xs: np.ndarray) -> np.ndarray:
         """
         Calculate quantity of interest.
         
-        E.g. Average value might be np.average(xs, axis=0)
+        E.g. Average value might be np.average(xs, axis=1)
         """
         pass
 
