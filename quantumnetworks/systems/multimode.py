@@ -79,13 +79,6 @@ class MultiModeSystem(SystemSolver):
         # coupling (in GHz)
         couplings_raw_data = self.load_file(folder + os.sep + "couplings.txt")
         self.params["couplings"] = self.parse_couplings(couplings_raw_data)
-        couplings = np.zeros((num_modes, num_modes))
-        for row in couplings_raw_data:
-            i = int(row[0])
-            j = int(row[1])
-            couplings[i, j] = row[2]
-            couplings[j, i] = row[2]
-        self.params["couplings"] = couplings
 
     def parse_couplings(self, couplings_raw_data):
         num_modes = self.params["num_modes"]
