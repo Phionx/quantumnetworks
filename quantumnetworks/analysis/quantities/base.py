@@ -12,8 +12,22 @@ class SystemQuantity(metaclass=ABCMeta):
         self.system = system
         self.x0 = x0
         self.ts = ts
+        self._xs = None
+        self._q = None
 
-    def sensitivity(self, param_name, param_indx=None, dp=1e-4):
+    @property
+    def xs(self):
+        if self._xs is None:
+            self._xs = self.system.forward_euler(self.x0, self.ts)
+        return self._xs
+
+    @property
+    def q(self):
+        if self._q is None:
+            self._q = self.calculate(self.xs)
+        return self._q
+
+    def sensitivity(self, param_name, param_indx=None, dp=1e-2):
         if not np.isscalar(self.system.params[param_name]):
             if param_indx is None:
                 raise ValueError("Please provide a param_indx.")
@@ -21,31 +35,23 @@ class SystemQuantity(metaclass=ABCMeta):
             if param_indx is not None:
                 raise ValueError("Unnecessary param_indx provided.")
 
-        # old solutions
-        xs = self.system.forward_euler(self.x0, self.ts)
-        q = self.calculate(xs)
+        copy_system = self.system.copy()
 
         # perturb params
         val = None
         if param_indx is None:
-            val = self.system.params[param_name]
-            self.system.params[param_name] *= 1 + dp
+            val = copy_system.params[param_name]
+            copy_system.params[param_name] = val * (1.0 + dp)
         else:
-            val = self.system.params[param_name][param_indx]
-            self.system.params[param_name][param_indx] *= 1 + dp
+            val = copy_system.params[param_name][param_indx]
+            copy_system.params[param_name][param_indx] = val * (1.0 + dp)
 
         # new solutions
-        xs_new = self.system.forward_euler(self.x0, self.ts)
+        xs_new = copy_system.forward_euler(self.x0, self.ts)
         q_new = self.calculate(xs_new)
 
         # finite difference
-        dqdp_i = (q_new - q) / dp
-
-        # reset params
-        if param_indx is None:
-            self.system.params[param_name] = val
-        else:
-            self.system.params[param_name][param_indx] = val
+        dqdp_i = (q_new - self.q) / (val * dp)
 
         return dqdp_i
 

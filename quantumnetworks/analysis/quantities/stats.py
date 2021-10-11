@@ -1,9 +1,8 @@
 """
-Statistical Quantities
+Statistical Quantities of Interest
 """
 
 import numpy as np
-
 from quantumnetworks.analysis.quantities.base import SystemQuantity
 
 

@@ -70,3 +70,11 @@ class SystemSolver(metaclass=ABCMeta):
             f = self.eval_f_linear(X[:, i], u, x0, u0)
             X[:, i + 1] = X[:, i] + dt * f
         return X
+
+    def copy(self):
+        """
+        Just copies params into another instance of the system class. 
+        Not a full copy (so that stored analysis can be reset).
+        """
+        cls = self.__class__
+        return cls(self.params)
