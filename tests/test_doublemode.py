@@ -18,25 +18,25 @@ import numpy as np
 class DoubleModeTest(unittest.TestCase):
     def setUp(self) -> None:
         self.params = {
-            "omega_a": 1,
-            "omega_b": 2,
-            "kappa_a": 0.001,
-            "kappa_b": 0.005,
-            "kerr_a": 0.01,
-            "kerr_b": 0.01,
-            "gamma_a": 0.002,
-            "gamma_b": 0.002,
-            "g_ab": 0.002,
+            "omega_a": 2 * np.pi * 1,
+            "omega_b": 2 * np.pi * 2,
+            "kappa_a": 2 * np.pi * 0.001,
+            "kappa_b": 2 * np.pi * 0.005,
+            "kerr_a": 2 * np.pi * 0.01,
+            "kerr_b": 2 * np.pi * 0.01,
+            "gamma_a": 2 * np.pi * 0.002,
+            "gamma_b": 2 * np.pi * 0.002,
+            "g_ab": 2 * np.pi * 0.002,
         }
+        self.drive_a = lambda t: np.exp(1.0j * (self.params["omega_a"] * t))
+        self.drive_b = lambda t: np.exp(1.0j * (self.params["omega_b"] * t))
 
     def test_forward_euler_no_A_in(self):
-        A_in = lambda t: 0
-        B_in = lambda t: 0
         x_0 = np.array([1, 0, 0, 1])
-        ts = np.linspace(0, 10, 100001)
+        ts = np.linspace(0, 1, 100001)
 
         # solve using SystemSolver
-        system = DoubleModeSystem(params=self.params, A_in=A_in, B_in=B_in)
+        system = DoubleModeSystem(params=self.params, A_in=None, B_in=None)
         X = system.forward_euler(x_0, ts)
 
         # solve using scipy.integrate.odeint
@@ -46,10 +46,12 @@ class DoubleModeTest(unittest.TestCase):
 
     def test_forward_euler_default_A_in(self):
         x_0 = np.array([1, 0, 0, 1])
-        ts = np.linspace(0, 10, 100001)
+        ts = np.linspace(0, 1, 100001)
 
         # solve using SystemSolver
-        system = DoubleModeSystem(params=self.params)
+        system = DoubleModeSystem(
+            params=self.params, A_in=self.drive_a, B_in=self.drive_b
+        )
         X = system.forward_euler(x_0, ts)
 
         # solve using scipy.integrate.odeint
@@ -68,18 +70,16 @@ class DoubleModeTest(unittest.TestCase):
         self.assertTrue(np.allclose(Jf_analytic, Jf_numeric))
 
     def test_linearization(self):
-        A_in = lambda t: 0
-        B_in = lambda t: 0
-        sys = DoubleModeSystem(params=self.params, A_in=A_in, B_in=B_in)
+        sys = DoubleModeSystem(params=self.params, A_in=None, B_in=None)
         x_0 = np.array([1, 0, 0, 1])
         n = 100000
-        ts = np.linspace(0, 10, n + 1)
+        ts = np.linspace(0, 1, n + 1)
         X = sys.forward_euler(x_0, ts)
         X_linear = sys.forward_euler_linear(x_0, ts, x_0, 0)
 
         # take beginning of sequences
-        X_linear_i = X_linear[:, : n // 20]
-        X_i = X[:, : n // 20]
+        X_linear_i = X_linear[:, : n // 10]
+        X_i = X[:, : n // 10]
 
         # filter to prevent divide by 0 errors
         X_linear_i = X_linear_i[X_i != 0]
