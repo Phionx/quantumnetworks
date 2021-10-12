@@ -17,11 +17,11 @@ import numpy as np
 
 class MultiModeTest(unittest.TestCase):
     def test_forward_euler_default_A_in(self):
-        omegas = [1, 2]
-        kappas = [0.001, 0.005]
-        couplings = [[0, 1, 0.002]]
-        gammas = [0.002, 0.002]
-        kerrs = [0.01, 0.01]
+        omegas = [2 * np.pi * 1, 2 * np.pi * 2]
+        kappas = [2 * np.pi * 0.001, 2 * np.pi * 0.005]
+        couplings = [[0, 1, 2 * np.pi * 0.002]]
+        gammas = [2 * np.pi * 0.002, 2 * np.pi * 0.002]
+        kerrs = [2 * np.pi * 0.01, 2 * np.pi * 0.01]
         system = MultiModeSystem(
             params={
                 "omegas": omegas,
@@ -32,7 +32,7 @@ class MultiModeTest(unittest.TestCase):
             }
         )
         x_0 = np.array([1, 0, 0, 1])
-        ts = np.linspace(0, 10, 100001)
+        ts = np.linspace(0, 1, 100001)
 
         X = system.forward_euler(x_0, ts)
 
@@ -42,11 +42,11 @@ class MultiModeTest(unittest.TestCase):
         self.assertTrue(np.allclose(X.T, sol, atol=0.002))
 
     def test_analytic_vs_numerical_Jf(self):
-        omegas = [1, 2]
-        kappas = [0.001, 0.005]
-        gammas = [0.002, 0.002]
-        kerrs = [0.01, 0.01]
-        couplings = [[0, 1, 0.002]]
+        omegas = [2 * np.pi * 1, 2 * np.pi * 2]
+        kappas = [2 * np.pi * 0.001, 2 * np.pi * 0.005]
+        gammas = [2 * np.pi * 0.002, 2 * np.pi * 0.002]
+        kerrs = [2 * np.pi * 0.01, 2 * np.pi * 0.01]
+        couplings = [[0, 1, 2 * np.pi * 0.002]]
         system = MultiModeSystem(
             params={
                 "omegas": omegas,
@@ -64,11 +64,11 @@ class MultiModeTest(unittest.TestCase):
         self.assertTrue(np.allclose(Jf_analytic, Jf_numeric))
 
     def test_against_double_mode(self):
-        omegas = [1, 2]
-        kappas = [0.001, 0.005]
-        gammas = [0.002, 0.002]
-        kerrs = [0.01, 0.01]
-        couplings = [[0, 1, 0.002]]
+        omegas = [2 * np.pi * 1, 2 * np.pi * 2]
+        kappas = [2 * np.pi * 0.001, 2 * np.pi * 0.005]
+        gammas = [2 * np.pi * 0.002, 2 * np.pi * 0.002]
+        kerrs = [2 * np.pi * 0.01, 2 * np.pi * 0.01]
+        couplings = [[0, 1, 2 * np.pi * 0.002]]
 
         system = MultiModeSystem(
             params={
@@ -83,15 +83,15 @@ class MultiModeTest(unittest.TestCase):
         B_in = lambda t: 0
         system_double = DoubleModeSystem(
             params={
-                "omega_a": 1,
-                "omega_b": 2,
-                "kappa_a": 0.001,
-                "kappa_b": 0.005,
-                "kerr_a": 0.01,
-                "kerr_b": 0.01,
-                "gamma_a": 0.002,
-                "gamma_b": 0.002,
-                "g_ab": 0.002,
+                "omega_a": 2 * np.pi * 1,
+                "omega_b": 2 * np.pi * 2,
+                "kappa_a": 2 * np.pi * 0.001,
+                "kappa_b": 2 * np.pi * 0.005,
+                "kerr_a": 2 * np.pi * 0.01,
+                "kerr_b": 2 * np.pi * 0.01,
+                "gamma_a": 2 * np.pi * 0.002,
+                "gamma_b": 2 * np.pi * 0.002,
+                "g_ab": 2 * np.pi * 0.002,
             },
             A_in=A_in,
             B_in=B_in,
@@ -101,10 +101,10 @@ class MultiModeTest(unittest.TestCase):
         self.assertTrue(np.array_equal(system.B, system_double.B))
 
     def test_against_single_mode(self):
-        omegas = [1]
-        kappas = [0.001]
-        gammas = [0.002]
-        kerrs = [0.01]
+        omegas = [2 * np.pi * 1]
+        kappas = [2 * np.pi * 0.001]
+        gammas = [2 * np.pi * 0.002]
+        kerrs = [2 * np.pi * 0.01]
         couplings = []
 
         system = MultiModeSystem(
@@ -118,7 +118,12 @@ class MultiModeTest(unittest.TestCase):
         )
         A_in = lambda t: 0
         system_double = SingleModeSystem(
-            params={"omega_a": 1, "kappa_a": 0.001, "gamma_a": 0.002, "kerr_a": 0.01},
+            params={
+                "omega_a": 2 * np.pi * 1,
+                "kappa_a": 2 * np.pi * 0.001,
+                "gamma_a": 2 * np.pi * 0.002,
+                "kerr_a": 2 * np.pi * 0.01,
+            },
             A_in=A_in,
         )
 
@@ -126,11 +131,11 @@ class MultiModeTest(unittest.TestCase):
         self.assertTrue(np.array_equal(system.B, system_double.B))
 
     def test_linearization(self):
-        omegas = [1, 2, 1]
-        kappas = [0.001, 0.005, 0.001]
-        gammas = [0.002, 0.002, 0.002]
-        kerrs = [0.001, 0.001, 0.001]
-        couplings = [[0, 1, 0.002], [1, 2, 0.002]]
+        omegas = [2 * np.pi * 1, 2 * np.pi * 2, 2 * np.pi * 1]
+        kappas = [2 * np.pi * 0.001, 2 * np.pi * 0.005, 2 * np.pi * 0.001]
+        gammas = [2 * np.pi * 0.002, 2 * np.pi * 0.002, 2 * np.pi * 0.002]
+        kerrs = [2 * np.pi * 0.001, 2 * np.pi * 0.001, 2 * np.pi * 0.001]
+        couplings = [[0, 1, 2 * np.pi * 0.002], [1, 2, 2 * np.pi * 0.002]]
         sys = MultiModeSystem(
             params={
                 "omegas": omegas,
@@ -143,14 +148,14 @@ class MultiModeTest(unittest.TestCase):
 
         x_0 = np.array([1, 0, 0, 1, 1, 0])
         n = 100000
-        ts = np.linspace(0, 10, n + 1)
+        ts = np.linspace(0, 1, n + 1)
 
         X = sys.forward_euler(x_0, ts)
         X_linear = sys.forward_euler_linear(x_0, ts, x_0, 0)
 
         # take beginning of sequences
-        X_linear_i = X_linear[:, : n // 20]
-        X_i = X[:, : n // 20]
+        X_linear_i = X_linear[:, : n // 10]
+        X_i = X[:, : n // 10]
 
         # filter to prevent divide by 0 errors
         X_linear_i = X_linear_i[X_i != 0]

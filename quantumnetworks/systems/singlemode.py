@@ -16,17 +16,17 @@ class SingleModeSystem(SystemSolver):
         super().__init__(params)
         self._A = None
         self._B = None
-        self.A_in = A_in if A_in else self.default_A_in
+        self.A_in = A_in if A_in else lambda t: 0
 
     def _param_validation(self):
         if "omega_a" not in self.params:
-            self.params["omega_a"] = 1  # GHz
+            self.params["omega_a"] = 2 * np.pi * 1  # 2pi * GHz
         if "kappa_a" not in self.params:
-            self.params["kappa_a"] = 0.001  # GHz
+            self.params["kappa_a"] = 2 * np.pi * 0.001  # 2pi * GHz
         if "gamma_a" not in self.params:
-            self.params["gamma_a"] = 0.002  # GHz
+            self.params["gamma_a"] = 2 * np.pi * 0.002  # 2pi * GHz
         if "kerr_a" not in self.params:
-            self.params["kerr_a"] = 0.001  # GHz
+            self.params["kerr_a"] = 2 * np.pi * 0.001  # 2pi * GHz
 
     # Known System Parameters and Load
     # =================================
@@ -53,10 +53,6 @@ class SingleModeSystem(SystemSolver):
             B = np.array([[-np.sqrt(kappa_a), 0], [0, -np.sqrt(kappa_a)]])
             self._B = B
         return self._B
-
-    def default_A_in(self, t: float):
-        omega_a = self.params["omega_a"]
-        return np.exp(1j * (omega_a * t))
 
     # Nonlinear
     # =================================
