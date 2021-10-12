@@ -77,4 +77,4 @@ class SystemSolver(metaclass=ABCMeta):
         Not a full copy (so that stored analysis can be reset).
         """
         cls = self.__class__
-        return cls(self.params)
+        return cls(self.params.copy())
