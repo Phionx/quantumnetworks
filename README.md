@@ -52,5 +52,5 @@ Core Devs: [Shantanu Jha](https://github.com/Phionx), [Shoumik Chowdhury](https:
 
 Thanks to [Professor Luca Daniel](https://www.mit.edu/~dluca/) and our TA, Taqiyyah Safi, for invaluable feedback during the development of this package in the Fall 2021 iteration of *Introduction to Numerical Simulation* (6.336) at MIT.
 
-## Reference
+<!-- ## Reference -->
 
