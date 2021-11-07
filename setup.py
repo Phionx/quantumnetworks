@@ -6,9 +6,7 @@ import os
 from setuptools import setup, find_namespace_packages
 
 REQUIREMENTS = ["numpy", "scipy", "matplotlib>=3.3.0", "retworkx>=0.10.0"]
-EXTRA_REQUIREMENTS = {
-    "visualization": ["jupyterlab>=3.1.0", "tqdm", "ipympl", "IPython"]
-}
+EXTRA_REQUIREMENTS = {"visualization": ["jupyterlab>=3.1.0", "tqdm", "IPython"]}
 
 # Read long description from README.
 README_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)), "README.md")
