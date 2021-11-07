@@ -71,6 +71,98 @@ class SystemSolver(metaclass=ABCMeta):
             X[:, i + 1] = X[:, i] + dt * f
         return X
 
+    def trapezoidal(self, x_start: np.ndarray, ts: np.ndarray, **kwargs):
+        X = 1.0 * np.zeros((x_start.size, ts.size))
+        X[:, 0] = x_start
+        dt = ts[1] - ts[0]
+        ts = np.append(ts, ts[-1] + dt)  # needed for last step
+
+        u = self.eval_u(ts[0])
+        u_next = self.eval_u(ts[1])
+        for i in range(0, ts.size - 2):
+            f = self.eval_f(X[:, i], u)
+            x_next_guess = X[:, i] + dt * f  # use Euler as a good initial guess
+            p = {"dt": dt, "f": f, "x": X[:, i], "u_next": u_next}
+            X[:, i + 1], _ = self.newton(x_next_guess, p, **kwargs)
+            u = u_next
+            u_next = self.eval_u(ts[i + 2])
+
+        return X
+
+    def eval_f_newton(
+        self, x_next: np.ndarray, p: Dict[str, np.ndarray],
+    ):
+        dt = p["dt"]
+        f_curr = p["f"]
+        x_curr = p["x"]
+        u_next = p["u_next"]
+
+        newton_f = x_curr - x_next + 1 / 2 * dt * (f_curr + self.eval_f(x_next, u_next))
+        return newton_f
+
+    def eval_Jf_newton(
+        self, x_next: np.ndarray, p: Dict[str, np.ndarray],
+    ):
+        dt = p["dt"]
+        u_next = p["u_next"]
+
+        return -np.eye(x_next.size) + 1 / 2 * dt * self.eval_Jf(x_next, u_next)
+
+    def newton(
+        self,
+        x0: np.ndarray,
+        p: Dict[str, np.ndarray],
+        err_f: float = 1e-8,
+        err_delta_x: float = 1e-8,
+        rel_delta_x=1e-8,
+        max_iter=100,
+        finite_difference=False,
+        return_iterations=False,
+    ):
+        X = np.zeros((max_iter + 1, x0.size))
+
+        k = 0
+        X[k, :] = x0
+        f = self.eval_f_newton(X[k, :], p)
+        err_f_k = np.linalg.norm(f, np.inf)
+
+        delta_x = 0
+        err_delta_x_k = 0
+        rel_delta_x_k = 0
+
+        while k < max_iter and (
+            err_f_k > err_f
+            or err_delta_x_k > err_delta_x
+            or rel_delta_x_k > rel_delta_x
+        ):
+            if finite_difference:
+                # Jf = self.eval_Jf_numerical(X[k, :], p)
+                raise NotImplementedError(
+                    "Coming soon! Need to generalize eval_Jf_numerical."
+                )
+            else:
+                Jf = self.eval_Jf_newton(X[k, :], p)
+            delta_x = -np.linalg.solve(Jf, f)
+            X[k + 1, :] = X[k, :] + delta_x
+            k += 1
+            f = self.eval_f_newton(X[k, :], p)
+            err_f_k = np.linalg.norm(f, np.inf)
+            err_delta_x_k = np.linalg.norm(delta_x, np.inf)
+            rel_delta_x_k = np.linalg.norm(delta_x, np.inf) / np.max(np.abs(X[k, :]))
+
+        if (
+            err_f_k <= err_f
+            and err_delta_x_k <= err_delta_x
+            and rel_delta_x_k <= rel_delta_x
+        ):
+            converged = True
+        else:
+            converged = False
+
+        if return_iterations:
+            return X[:k, :], converged
+        return X[k - 1, :], converged
+
     def copy(self):
         """
         Just copies params into another instance of the system class. 
