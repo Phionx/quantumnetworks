@@ -116,6 +116,7 @@ class SystemSolver(metaclass=ABCMeta):
         err_delta_x: float = 1e-8,
         rel_delta_x=1e-8,
         max_iter=100,
+        use_gcr=False,
         finite_difference=False,
         return_iterations=False,
     ):
@@ -135,14 +136,17 @@ class SystemSolver(metaclass=ABCMeta):
             or err_delta_x_k > err_delta_x
             or rel_delta_x_k > rel_delta_x
         ):
-            if finite_difference:
-                # Jf = self.eval_Jf_numerical(X[k, :], p)
-                raise NotImplementedError(
-                    "Coming soon! Need to generalize eval_Jf_numerical."
-                )
+            if not use_gcr:
+                if finite_difference:
+                    # Jf = self.eval_Jf_numerical(X[k, :], p)
+                    raise NotImplementedError(
+                        "Coming soon! Need to generalize eval_Jf_numerical."
+                    )
+                else:
+                    Jf = self.eval_Jf_newton(X[k, :], p)
+                delta_x = -np.linalg.solve(Jf, f)
             else:
-                Jf = self.eval_Jf_newton(X[k, :], p)
-            delta_x = -np.linalg.solve(Jf, f)
+                delta_x, _ = self.tgcr_matrix_free(-f, X[k, :], p)
             X[k + 1, :] = X[k, :] + delta_x
             k += 1
             f = self.eval_f_newton(X[k, :], p)
@@ -162,6 +166,60 @@ class SystemSolver(metaclass=ABCMeta):
         if return_iterations:
             return X[:k, :], converged
         return X[k - 1, :], converged
+
+    def tgcr_matrix_free(
+        self,
+        b: np.ndarray,
+        xk: np.ndarray,
+        params: Dict[str, np.ndarray],
+        epsilon: float = 1e-6,
+        tol: float = 0.1,
+        max_iter: int = 100,
+    ):
+        """
+        Solving Jf delta_x = -f, without Jf matrix
+        """
+        x = np.zeros_like(b)
+        r = b
+        f_xk = -b
+
+        r_norms = np.zeros(max_iter + 1)
+        r_norms[0] = np.linalg.norm(r, 2)
+
+        p = np.zeros((max_iter + 1, b.size))
+        Ap = np.zeros((max_iter + 1, b.size))
+
+        for i in range(max_iter):
+            p[i, :] = r
+            Ap[i, :] = (
+                1.0
+                / epsilon
+                * (self.eval_f_newton(xk + epsilon * p[i, :], params) - f_xk)
+            )
+
+            for j in range(0, i):
+                beta = Ap[i, :].T * Ap[j, :]
+                p[i, :] = p[i, :] - beta * p[j, :]
+                Ap[i, :] = Ap[i, :] - beta * Ap[j, :]
+
+            norm_Ap = np.linalg.norm(Ap[i, :], 2)
+            Ap[i, :] = Ap[i, :] / norm_Ap
+            p[i, :] = p[i, :] / norm_Ap
+
+            alpha = r.T * Ap[i, :]
+
+            x = x + alpha * p[i, :]
+            r = r - alpha * Ap[i, :]
+
+            r_norms[i + 1] = np.linalg.norm(r, 2)
+
+            if r_norms[i + 1] < (tol * r_norms[0]):
+                break
+
+        r_norms = r_norms / r_norms[0]
+        converged = bool(r_norms[i + 1] < tol)
+
+        return x, converged
 
     def copy(self):
         """
