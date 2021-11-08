@@ -120,6 +120,28 @@ class SystemSolver(metaclass=ABCMeta):
         finite_difference=False,
         return_iterations=False,
     ):
+        """
+        The newton method is used to find the zeros of a nonlinear function. 
+        Here, we solve for the zero of a particular function used for the Trapezoidal method.
+
+        Arguments:
+            x0 (np.ndarray): initial guess
+            p (Dict[str, np.ndarray]): 
+                key: description of array
+                value: array used in evaluating self.eval_f_newton
+            err_f (float): ||f||_{inf} <= err_f condition for convergence
+            err_delta_x (float): ||delta_x||_{inf} <= err_f condition for convergence
+            rel_delta_x (float): ||delta_x||_{inf}/max(|X_k|) <= err_f condition for convergence
+            max_iter (int): maximum iterations of newton that can be run
+            use_gcr (bool): whether to use GCR instead of calculating Jf to find delta_x from Jf delta_x = -f
+            finite_difference (bool): whetherr to use finite difference to calculate Jf
+            return_iterations (bool): whether to return all intermediate solutions or just the final solution
+        
+        Returns:
+            (all) X[:k,:] or (final) X[k-1,:]: 
+                all intermediate solutions or just the final solution
+            converged (bool): whether Newton converged or not
+        """
         X = np.zeros((max_iter + 1, x0.size))
 
         k = 0
@@ -154,14 +176,11 @@ class SystemSolver(metaclass=ABCMeta):
             err_delta_x_k = np.linalg.norm(delta_x, np.inf)
             rel_delta_x_k = np.linalg.norm(delta_x, np.inf) / np.max(np.abs(X[k, :]))
 
-        if (
+        converged = bool(
             err_f_k <= err_f
             and err_delta_x_k <= err_delta_x
             and rel_delta_x_k <= rel_delta_x
-        ):
-            converged = True
-        else:
-            converged = False
+        )
 
         if return_iterations:
             return X[:k, :], converged
@@ -177,7 +196,23 @@ class SystemSolver(metaclass=ABCMeta):
         max_iter: int = 100,
     ):
         """
-        Solving Jf delta_x = -f, without Jf matrix
+        the Generalized Conjugate Residual (tGCR) method
+
+        Solving Jf delta_x = -f, without Jf matrix using the matrix-free or implicit method.
+
+        Arguments:
+            b (np.ndarray): right hand side of Ax = b
+            xk (np.ndarray): X[k,:] from Newton's method implementation in self.newton
+            params (Dict[str,np.ndarray]):
+                key: description of array
+                value: array used in evaluating self.eval_f_newton
+            epsilon (float): step size
+            tol (float): convergence tolerance
+            max_iter (int): maximum number of iterations
+
+        Returns:
+            x (np.ndarray): soluition to Ax = b
+            converged (bool): whether GCR converged or not
         """
         x = np.zeros_like(b)
         r = b
