@@ -1,0 +1,3 @@
+include quantumnetworks/VERSION.txt
+include README.md
+include LICENSE
