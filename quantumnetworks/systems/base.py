@@ -119,6 +119,7 @@ class SystemSolver(metaclass=ABCMeta):
         use_gcr=False,
         finite_difference=False,
         return_iterations=False,
+        **kwargs
     ):
         """
         The newton method is used to find the zeros of a nonlinear function. 
@@ -168,7 +169,7 @@ class SystemSolver(metaclass=ABCMeta):
                     Jf = self.eval_Jf_newton(X[k, :], p)
                 delta_x = -np.linalg.solve(Jf, f)
             else:
-                delta_x, _ = self.tgcr_matrix_free(-f, X[k, :], p)
+                delta_x, _ = self.tgcr_matrix_free(-f, X[k, :], p, **kwargs)
             X[k + 1, :] = X[k, :] + delta_x
             k += 1
             f = self.eval_f_newton(X[k, :], p)
