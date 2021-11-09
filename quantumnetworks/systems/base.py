@@ -71,6 +71,192 @@ class SystemSolver(metaclass=ABCMeta):
             X[:, i + 1] = X[:, i] + dt * f
         return X
 
+    def trapezoidal(self, x_start: np.ndarray, ts: np.ndarray, **kwargs):
+        X = 1.0 * np.zeros((x_start.size, ts.size))
+        X[:, 0] = x_start
+        dt = ts[1] - ts[0]
+        ts = np.append(ts, ts[-1] + dt)  # needed for last step
+
+        u = self.eval_u(ts[0])
+        u_next = self.eval_u(ts[1])
+        for i in range(0, ts.size - 2):
+            f = self.eval_f(X[:, i], u)
+            x_next_guess = X[:, i] + dt * f  # use Euler as a good initial guess
+            p = {"dt": dt, "f": f, "x": X[:, i], "u_next": u_next}
+            X[:, i + 1], _ = self.newton(x_next_guess, p, **kwargs)
+            u = u_next
+            u_next = self.eval_u(ts[i + 2])
+
+        return X
+
+    def eval_f_newton(
+        self, x_next: np.ndarray, p: Dict[str, np.ndarray],
+    ):
+        dt = p["dt"]
+        f_curr = p["f"]
+        x_curr = p["x"]
+        u_next = p["u_next"]
+
+        newton_f = x_curr - x_next + 1 / 2 * dt * (f_curr + self.eval_f(x_next, u_next))
+        return newton_f
+
+    def eval_Jf_newton(
+        self, x_next: np.ndarray, p: Dict[str, np.ndarray],
+    ):
+        dt = p["dt"]
+        u_next = p["u_next"]
+
+        return -np.eye(x_next.size) + 1 / 2 * dt * self.eval_Jf(x_next, u_next)
+
+    def newton(
+        self,
+        x0: np.ndarray,
+        p: Dict[str, np.ndarray],
+        err_f: float = 1e-8,
+        err_delta_x: float = 1e-8,
+        rel_delta_x=1e-8,
+        max_iter=100,
+        use_gcr=False,
+        finite_difference=False,
+        return_iterations=False,
+        **kwargs
+    ):
+        """
+        The newton method is used to find the zeros of a nonlinear function. 
+        Here, we solve for the zero of a particular function used for the Trapezoidal method.
+
+        Arguments:
+            x0 (np.ndarray): initial guess
+            p (Dict[str, np.ndarray]): 
+                key: description of array
+                value: array used in evaluating self.eval_f_newton
+            err_f (float): ||f||_{inf} <= err_f condition for convergence
+            err_delta_x (float): ||delta_x||_{inf} <= err_f condition for convergence
+            rel_delta_x (float): ||delta_x||_{inf}/max(|X_k|) <= err_f condition for convergence
+            max_iter (int): maximum iterations of newton that can be run
+            use_gcr (bool): whether to use GCR instead of calculating Jf to find delta_x from Jf delta_x = -f
+            finite_difference (bool): whetherr to use finite difference to calculate Jf
+            return_iterations (bool): whether to return all intermediate solutions or just the final solution
+        
+        Returns:
+            (all) X[:k,:] or (final) X[k-1,:]: 
+                all intermediate solutions or just the final solution
+            converged (bool): whether Newton converged or not
+        """
+        X = np.zeros((max_iter + 1, x0.size))
+
+        k = 0
+        X[k, :] = x0
+        f = self.eval_f_newton(X[k, :], p)
+        err_f_k = np.linalg.norm(f, np.inf)
+
+        delta_x = 0
+        err_delta_x_k = 0
+        rel_delta_x_k = 0
+
+        while k < max_iter and (
+            err_f_k > err_f
+            or err_delta_x_k > err_delta_x
+            or rel_delta_x_k > rel_delta_x
+        ):
+            if not use_gcr:
+                if finite_difference:
+                    # Jf = self.eval_Jf_numerical(X[k, :], p)
+                    raise NotImplementedError(
+                        "Coming soon! Need to generalize eval_Jf_numerical."
+                    )
+                else:
+                    Jf = self.eval_Jf_newton(X[k, :], p)
+                delta_x = -np.linalg.solve(Jf, f)
+            else:
+                delta_x, _ = self.tgcr_matrix_free(-f, X[k, :], p, **kwargs)
+            X[k + 1, :] = X[k, :] + delta_x
+            k += 1
+            f = self.eval_f_newton(X[k, :], p)
+            err_f_k = np.linalg.norm(f, np.inf)
+            err_delta_x_k = np.linalg.norm(delta_x, np.inf)
+            rel_delta_x_k = np.linalg.norm(delta_x, np.inf) / np.max(np.abs(X[k, :]))
+
+        converged = bool(
+            err_f_k <= err_f
+            and err_delta_x_k <= err_delta_x
+            and rel_delta_x_k <= rel_delta_x
+        )
+
+        if return_iterations:
+            return X[:k, :], converged
+        return X[k - 1, :], converged
+
+    def tgcr_matrix_free(
+        self,
+        b: np.ndarray,
+        xk: np.ndarray,
+        params: Dict[str, np.ndarray],
+        epsilon: float = 1e-6,
+        tol: float = 0.1,
+        max_iter: int = 100,
+    ):
+        """
+        the Generalized Conjugate Residual (tGCR) method
+
+        Solving Jf delta_x = -f, without Jf matrix using the matrix-free or implicit method.
+
+        Arguments:
+            b (np.ndarray): right hand side of Ax = b
+            xk (np.ndarray): X[k,:] from Newton's method implementation in self.newton
+            params (Dict[str,np.ndarray]):
+                key: description of array
+                value: array used in evaluating self.eval_f_newton
+            epsilon (float): step size
+            tol (float): convergence tolerance
+            max_iter (int): maximum number of iterations
+
+        Returns:
+            x (np.ndarray): soluition to Ax = b
+            converged (bool): whether GCR converged or not
+        """
+        x = np.zeros_like(b)
+        r = b
+        f_xk = -b
+
+        r_norms = np.zeros(max_iter + 1)
+        r_norms[0] = np.linalg.norm(r, 2)
+
+        p = np.zeros((max_iter + 1, b.size))
+        Ap = np.zeros((max_iter + 1, b.size))
+
+        for i in range(max_iter):
+            p[i, :] = r
+            Ap[i, :] = (
+                1.0
+                / epsilon
+                * (self.eval_f_newton(xk + epsilon * p[i, :], params) - f_xk)
+            )
+
+            for j in range(0, i):
+                beta = Ap[i, :].T * Ap[j, :]
+                p[i, :] = p[i, :] - beta * p[j, :]
+                Ap[i, :] = Ap[i, :] - beta * Ap[j, :]
+
+            norm_Ap = np.linalg.norm(Ap[i, :], 2)
+            Ap[i, :] = Ap[i, :] / norm_Ap
+            p[i, :] = p[i, :] / norm_Ap
+
+            alpha = r.T * Ap[i, :]
+
+            x = x + alpha * p[i, :]
+            r = r - alpha * Ap[i, :]
+
+            r_norms[i + 1] = np.linalg.norm(r, 2)
+
+            if r_norms[i + 1] < (tol * r_norms[0]):
+                break
+
+        r_norms = r_norms / r_norms[0]
+        converged = bool(r_norms[i + 1] < tol)
+
+        return x, converged
+
     def copy(self):
         """
         Just copies params into another instance of the system class. 
