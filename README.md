@@ -5,12 +5,19 @@
 [![](https://img.shields.io/pypi/dm/quantumnetworks.svg?style=popout-square)](https://pypi.org/project/quantumnetworks/)
 ## Installation
 
+*Conda users, please make sure to `conda install pip` before running any pip installation if you want to install `quantumnetworks` into your conda environment.*
+
 `quantumnetworks` will soon be published on PyPI. So, to install, simply run:
 
-```
+```sh
 pip install quantumnetworks
 ```
 
+To check if the installation was successful, run:
+```python
+python3
+>>> import quantumnetworks as qn
+```
 
 ## Building from source
 
@@ -27,7 +34,7 @@ If you also want to download the dependencies needed to run optional visualizati
 #### Installation for Devs
 
 If you intend to contribute to this project, please install `quantumnetworks` in develop mode as follows:
-```
+```sh
 git clone git@github.com:Phionx/quantumnetworks.git
 cd quantumnetworks
 pip install -e .[visualization]
