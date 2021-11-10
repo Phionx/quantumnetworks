@@ -5,7 +5,7 @@
 [![](https://img.shields.io/pypi/dm/quantumnetworks.svg?style=popout-square)](https://pypi.org/project/quantumnetworks/)
 ## Installation
 
-*Conda users, please make sure to `conda install pip` before running any pip installation if you want to install `bosonic` into your conda environment.*
+*Conda users, please make sure to `conda install pip` before running any pip installation if you want to install `quantumnetworks` into your conda environment.*
 
 `quantumnetworks` will soon be published on PyPI. So, to install, simply run:
 
