@@ -52,8 +52,8 @@ class SystemSolver(metaclass=ABCMeta):
         x_start = x_start.astype(float)
         X = 1.0 * np.zeros((x_start.size, ts.size))
         X[:, 0] = x_start
-        dt = ts[1] - ts[0]
         for i, t in enumerate(ts[:-1]):
+            dt = ts[i + 1] - ts[i]
             u = self.eval_u(t)
             f = self.eval_f(X[:, i], u)
             X[:, i + 1] = X[:, i] + dt * f
@@ -64,8 +64,8 @@ class SystemSolver(metaclass=ABCMeta):
     ):
         X = 1.0 * np.zeros((x_start.size, ts.size))
         X[:, 0] = x_start
-        dt = ts[1] - ts[0]
         for i, t in enumerate(ts[:-1]):
+            dt = ts[i + 1] - ts[i]
             u = self.eval_u(t)
             f = self.eval_f_linear(X[:, i], u, x0, u0)
             X[:, i + 1] = X[:, i] + dt * f
@@ -74,18 +74,18 @@ class SystemSolver(metaclass=ABCMeta):
     def trapezoidal(self, x_start: np.ndarray, ts: np.ndarray, **kwargs):
         X = 1.0 * np.zeros((x_start.size, ts.size))
         X[:, 0] = x_start
-        dt = ts[1] - ts[0]
-        ts = np.append(ts, ts[-1] + dt)  # needed for last step
 
         u = self.eval_u(ts[0])
         u_next = self.eval_u(ts[1])
-        for i in range(0, ts.size - 2):
+        for i in range(0, ts.size - 1):
             f = self.eval_f(X[:, i], u)
+            dt = ts[i + 1] - ts[i]
             x_next_guess = X[:, i] + dt * f  # use Euler as a good initial guess
             p = {"dt": dt, "f": f, "x": X[:, i], "u_next": u_next}
             X[:, i + 1], _ = self.newton(x_next_guess, p, **kwargs)
             u = u_next
-            u_next = self.eval_u(ts[i + 2])
+            if i < ts.size - 2:
+                u_next = self.eval_u(ts[i + 2])
 
         return X
 

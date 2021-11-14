@@ -21,6 +21,7 @@ def plot_full_evolution(xs, ts, labels=None, fig=None, ax=None, **kwargs):
     fig = fig if fig is not None else plt.figure(figsize=(4, 3), dpi=200)
     ax = ax if ax is not None else fig.subplots()
     for i, x in enumerate(xs):
+        label = str(i)
         if labels:
             label = labels[i]
         plot_evolution(x, ts, fig=fig, ax=ax, label=label, **kwargs)
