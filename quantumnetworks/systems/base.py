@@ -36,14 +36,18 @@ class SystemSolver(metaclass=ABCMeta):
     def eval_Jf_numerical(
         self, x: np.ndarray, u: np.ndarray, dx: float = 1e-7
     ) -> np.ndarray:
+        return self.eval_numerical_gradient(self.eval_f, x, u, dx=dx,)
+
+    def eval_numerical_gradient(self, eval_f, x: np.ndarray, *args, **kwargs):
         x = x.astype(float)
-        f = self.eval_f(x, u)
+        dx = kwargs.get("dx", 1e-7)
+        f = eval_f(x, *args, **kwargs)
         J = np.zeros((x.size, x.size))
         for i, _ in enumerate(x):
             delta_x = np.zeros(x.size)
             delta_x[i] = dx
             new_x = x + delta_x
-            f_new = self.eval_f(new_x, u)
+            f_new = eval_f(new_x, *args, **kwargs)
             delta_f = f_new - f
             J[:, i] = delta_f / dx
         return J
@@ -71,7 +75,9 @@ class SystemSolver(metaclass=ABCMeta):
             X[:, i + 1] = X[:, i] + dt * f
         return X
 
-    def trapezoidal(self, x_start: np.ndarray, ts: np.ndarray, **kwargs):
+    def trapezoidal(
+        self, x_start: np.ndarray, ts: np.ndarray, return_last=False, **kwargs
+    ):
         X = 1.0 * np.zeros((x_start.size, ts.size))
         X[:, 0] = x_start
 
@@ -82,14 +88,45 @@ class SystemSolver(metaclass=ABCMeta):
             dt = ts[i + 1] - ts[i]
             x_next_guess = X[:, i] + dt * f  # use Euler as a good initial guess
             p = {"dt": dt, "f": f, "x": X[:, i], "u_next": u_next}
-            X[:, i + 1], _ = self.newton(x_next_guess, p, **kwargs)
+            X[:, i + 1], _ = self.newton(
+                x_next_guess,
+                p,
+                self.eval_f_trapezoidal,
+                self.eval_Jf_trapezoidal,
+                **kwargs,
+            )
             u = u_next
             if i < ts.size - 2:
                 u_next = self.eval_u(ts[i + 2])
 
+        if return_last:
+            return X[:, -1]
         return X
 
-    def eval_f_newton(
+    def eval_f_shooting_newton(self, x: np.ndarray, p: Dict[str, np.ndarray]):
+        ts = p["ts"]
+        return self.trapezoidal(x, ts, return_last=True) - x
+
+    def eval_Jf_shooting_newton_numerical(
+        self, x: np.ndarray, p: Dict[str, np.ndarray]
+    ):
+        ts = p["ts"]
+        Jf = self.eval_numerical_gradient(
+            self.trapezoidal, x, ts, return_last=True
+        ) - np.eye(x.size)
+        return Jf
+
+    def eval_solve_shooting_newton(self, x0: np.ndarray, ts: np.ndarray, **kwargs):
+        p = {"ts": ts}
+        return self.newton(
+            np.zeros_like(x0),
+            p,
+            self.eval_f_shooting_newton,
+            self.eval_Jf_shooting_newton_numerical,
+            **kwargs,
+        )[0]
+
+    def eval_f_trapezoidal(
         self, x_next: np.ndarray, p: Dict[str, np.ndarray],
     ):
         dt = p["dt"]
@@ -100,7 +137,7 @@ class SystemSolver(metaclass=ABCMeta):
         newton_f = x_curr - x_next + 1 / 2 * dt * (f_curr + self.eval_f(x_next, u_next))
         return newton_f
 
-    def eval_Jf_newton(
+    def eval_Jf_trapezoidal(
         self, x_next: np.ndarray, p: Dict[str, np.ndarray],
     ):
         dt = p["dt"]
@@ -112,6 +149,8 @@ class SystemSolver(metaclass=ABCMeta):
         self,
         x0: np.ndarray,
         p: Dict[str, np.ndarray],
+        eval_f,
+        eval_Jf,
         err_f: float = 1e-8,
         err_delta_x: float = 1e-8,
         rel_delta_x=1e-8,
@@ -130,6 +169,10 @@ class SystemSolver(metaclass=ABCMeta):
             p (Dict[str, np.ndarray]): 
                 key: description of array
                 value: array used in evaluating self.eval_f_newton
+            eval_f (function):
+                function used to calculate f
+            eval_Jf (function):
+                function used to calculate gradient of f
             err_f (float): ||f||_{inf} <= err_f condition for convergence
             err_delta_x (float): ||delta_x||_{inf} <= err_f condition for convergence
             rel_delta_x (float): ||delta_x||_{inf}/max(|X_k|) <= err_f condition for convergence
@@ -147,7 +190,7 @@ class SystemSolver(metaclass=ABCMeta):
 
         k = 0
         X[k, :] = x0
-        f = self.eval_f_newton(X[k, :], p)
+        f = eval_f(X[k, :], p)
         err_f_k = np.linalg.norm(f, np.inf)
 
         delta_x = 0
@@ -166,13 +209,13 @@ class SystemSolver(metaclass=ABCMeta):
                         "Coming soon! Need to generalize eval_Jf_numerical."
                     )
                 else:
-                    Jf = self.eval_Jf_newton(X[k, :], p)
+                    Jf = eval_Jf(X[k, :], p)
                 delta_x = -np.linalg.solve(Jf, f)
             else:
-                delta_x, _ = self.tgcr_matrix_free(-f, X[k, :], p, **kwargs)
+                delta_x, _ = self.tgcr_matrix_free(-f, X[k, :], p, eval_f, **kwargs)
             X[k + 1, :] = X[k, :] + delta_x
             k += 1
-            f = self.eval_f_newton(X[k, :], p)
+            f = eval_f(X[k, :], p)
             err_f_k = np.linalg.norm(f, np.inf)
             err_delta_x_k = np.linalg.norm(delta_x, np.inf)
             rel_delta_x_k = np.linalg.norm(delta_x, np.inf) / np.max(np.abs(X[k, :]))
@@ -192,6 +235,7 @@ class SystemSolver(metaclass=ABCMeta):
         b: np.ndarray,
         xk: np.ndarray,
         params: Dict[str, np.ndarray],
+        eval_f,
         epsilon: float = 1e-6,
         tol: float = 0.1,
         max_iter: int = 100,
@@ -207,6 +251,8 @@ class SystemSolver(metaclass=ABCMeta):
             params (Dict[str,np.ndarray]):
                 key: description of array
                 value: array used in evaluating self.eval_f_newton
+            eval_f (function):
+                function used to calculate f
             epsilon (float): step size
             tol (float): convergence tolerance
             max_iter (int): maximum number of iterations
@@ -227,11 +273,7 @@ class SystemSolver(metaclass=ABCMeta):
 
         for i in range(max_iter):
             p[i, :] = r
-            Ap[i, :] = (
-                1.0
-                / epsilon
-                * (self.eval_f_newton(xk + epsilon * p[i, :], params) - f_xk)
-            )
+            Ap[i, :] = 1.0 / epsilon * (eval_f(xk + epsilon * p[i, :], params) - f_xk)
 
             for j in range(0, i):
                 beta = Ap[i, :].T * Ap[j, :]
