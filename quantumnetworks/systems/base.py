@@ -8,7 +8,7 @@ import numpy as np
 
 class SystemSolver(metaclass=ABCMeta):
     def __init__(self, params: Dict[str, Any]) -> None:
-        self.params = params
+        self.params = params.copy()
         self._param_validation()
 
     @abstractmethod
@@ -36,7 +36,12 @@ class SystemSolver(metaclass=ABCMeta):
     def eval_Jf_numerical(
         self, x: np.ndarray, u: np.ndarray, dx: float = 1e-7
     ) -> np.ndarray:
-        return self.eval_numerical_gradient(self.eval_f, x, u, dx=dx,)
+        return self.eval_numerical_gradient(
+            self.eval_f,
+            x,
+            u,
+            dx=dx,
+        )
 
     def eval_numerical_gradient(self, eval_f, x: np.ndarray, *args, **kwargs):
         x = x.astype(float)
@@ -119,7 +124,7 @@ class SystemSolver(metaclass=ABCMeta):
     def eval_solve_shooting_newton(self, x0: np.ndarray, ts: np.ndarray, **kwargs):
         p = {"ts": ts}
         return self.newton(
-            np.zeros_like(x0),
+            x0,
             p,
             self.eval_f_shooting_newton,
             self.eval_Jf_shooting_newton_numerical,
@@ -127,7 +132,9 @@ class SystemSolver(metaclass=ABCMeta):
         )[0]
 
     def eval_f_trapezoidal(
-        self, x_next: np.ndarray, p: Dict[str, np.ndarray],
+        self,
+        x_next: np.ndarray,
+        p: Dict[str, np.ndarray],
     ):
         dt = p["dt"]
         f_curr = p["f"]
@@ -138,7 +145,9 @@ class SystemSolver(metaclass=ABCMeta):
         return newton_f
 
     def eval_Jf_trapezoidal(
-        self, x_next: np.ndarray, p: Dict[str, np.ndarray],
+        self,
+        x_next: np.ndarray,
+        p: Dict[str, np.ndarray],
     ):
         dt = p["dt"]
         u_next = p["u_next"]
@@ -161,12 +170,12 @@ class SystemSolver(metaclass=ABCMeta):
         **kwargs
     ):
         """
-        The newton method is used to find the zeros of a nonlinear function. 
+        The newton method is used to find the zeros of a nonlinear function.
         Here, we solve for the zero of a particular function used for the Trapezoidal method.
 
         Arguments:
             x0 (np.ndarray): initial guess
-            p (Dict[str, np.ndarray]): 
+            p (Dict[str, np.ndarray]):
                 key: description of array
                 value: array used in evaluating self.eval_f_newton
             eval_f (function):
@@ -180,9 +189,9 @@ class SystemSolver(metaclass=ABCMeta):
             use_gcr (bool): whether to use GCR instead of calculating Jf to find delta_x from Jf delta_x = -f
             finite_difference (bool): whetherr to use finite difference to calculate Jf
             return_iterations (bool): whether to return all intermediate solutions or just the final solution
-        
+
         Returns:
-            (all) X[:k,:] or (final) X[k-1,:]: 
+            (all) X[:k,:] or (final) X[k-1,:]:
                 all intermediate solutions or just the final solution
             converged (bool): whether Newton converged or not
         """
@@ -301,7 +310,7 @@ class SystemSolver(metaclass=ABCMeta):
 
     def copy(self):
         """
-        Just copies params into another instance of the system class. 
+        Just copies params into another instance of the system class.
         Not a full copy (so that stored analysis can be reset).
         """
         cls = self.__class__
