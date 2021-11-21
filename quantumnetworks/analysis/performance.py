@@ -1,12 +1,30 @@
 """
-Find finite ODE solver parameters for system
+Performance Analysis Tools
 """
 
+import time
+
 from quantumnetworks.systems.base import SystemSolver
+from tqdm import tqdm
 import numpy as np
 
 
+def time_func(func, *args, **kwargs):
+    time_vals = []
+    n = kwargs.pop("n", 100)
+    for i in tqdm(range(n)):
+        start = time.time()
+        func(*args, **kwargs)
+        time_vals.append(time.time() - start)
+    top_times = sorted(time_vals)[: max(n // 10, 4)]
+    return sum(top_times) / len(top_times)
+
+
 class SolverOptimizer:
+    """
+    Find finite ODE solver parameters for system
+    """
+
     def __init__(self, system, x_0, t_i, t_f) -> None:
         self.system = system
         self.x_0 = x_0
