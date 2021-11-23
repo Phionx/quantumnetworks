@@ -13,6 +13,7 @@ class SystemSolver(metaclass=ABCMeta):
 
     @abstractmethod
     def _param_validation(self):
+        self.params["q"] = self.params.get("q", None)
         pass
 
     @abstractmethod
@@ -27,25 +28,38 @@ class SystemSolver(metaclass=ABCMeta):
     def eval_Jf(self, x: np.ndarray, u: np.ndarray) -> np.ndarray:
         pass
 
+    def eval_linear_matrices(self, x0: np.ndarray, u0: np.ndarray):
+        if np.isscalar(u0) and u0 == 0:
+            u0 = np.zeros_like(x0)
+
+        Jf_0 = self.eval_Jf(x0, u0)
+        f_0 = self.eval_f(x0, u0)
+        K0 = f_0 - Jf_0.dot(x0) - u0
+        K0 = K0.reshape(K0.size, 1)
+
+        Ju_0 = np.eye(u0.size)  # df/du = 1.0 in our case
+        A = Jf_0
+        B = np.concatenate((K0, Ju_0), axis=1)
+        return A, B
+
     def eval_f_linear(
-        self, x: np.ndarray, u: np.ndarray, x0: np.ndarray, u0: np.ndarray
+        self, x: np.ndarray, u: np.ndarray, A: np.ndarray, B: np.ndarray
     ) -> np.ndarray:
-        # df/du = 1.0 in our case
-        return self.eval_f(x0, u0) + self.eval_Jf(x0, u0).dot(x - x0) + 1.0 * (u - u0)
+        u_full = np.append(1, u)
+        # print(A.shape)
+        # print(x.shape)
+        # print(B.shape)
+        # print(u_full.shape)
+        return A.dot(x) + B.dot(u_full)
 
     def eval_Jf_numerical(
         self, x: np.ndarray, u: np.ndarray, dx: float = 1e-7
     ) -> np.ndarray:
-        return self.eval_numerical_gradient(
-            self.eval_f,
-            x,
-            u,
-            dx=dx,
-        )
+        return self.eval_numerical_gradient(self.eval_f, x, u, dx=dx,)
 
     def eval_numerical_gradient(self, eval_f, x: np.ndarray, *args, **kwargs):
         x = x.astype(float)
-        dx = kwargs.get("dx", 1e-7)
+        dx = kwargs.pop("dx", 1e-7)
         f = eval_f(x, *args, **kwargs)
         J = np.zeros((x.size, x.size))
         for i, _ in enumerate(x):
@@ -71,14 +85,37 @@ class SystemSolver(metaclass=ABCMeta):
     def forward_euler_linear(
         self, x_start: np.ndarray, ts: np.ndarray, x0: np.ndarray, u0: np.ndarray
     ):
-        X = 1.0 * np.zeros((x_start.size, ts.size))
+        A, B = self.eval_linear_matrices(x0, u0)
+        q = self.params["q"]
+        if q is not None:
+            evals, V = np.linalg.eig(A)
+            V_dag = V.T.conj()
+            B_hat = V_dag.dot(B)
+
+            # just take the smallest eigenvalues (i.e. [-q:])
+            evals = evals[-q:]
+            A_hat = np.diag(evals)
+            B_hat = B_hat[
+                -q:
+            ]  # selecting rows of the B_hat matrix corresponding to smallest eigenvalues
+            A, B = A_hat, B_hat
+            V_dag_trunc = V_dag[-q:, :]
+            x_start = V_dag_trunc.dot(x_start)
+
+        X = 1.0 * np.zeros((x_start.size, ts.size), dtype=complex)
         X[:, 0] = x_start
         for i, t in enumerate(ts[:-1]):
             dt = ts[i + 1] - ts[i]
             u = self.eval_u(t)
-            f = self.eval_f_linear(X[:, i], u, x0, u0)
+            f = self.eval_f_linear(X[:, i], u, A, B)
             X[:, i + 1] = X[:, i] + dt * f
-        return X
+
+        if q is not None:
+            # now we need to convert back to the full basis
+            V_trunc = V[:, -q:]
+            X = V_trunc.dot(X)
+
+        return np.real(X)
 
     def trapezoidal(
         self, x_start: np.ndarray, ts: np.ndarray, return_last=False, **kwargs
@@ -132,9 +169,7 @@ class SystemSolver(metaclass=ABCMeta):
         )[0]
 
     def eval_f_trapezoidal(
-        self,
-        x_next: np.ndarray,
-        p: Dict[str, np.ndarray],
+        self, x_next: np.ndarray, p: Dict[str, np.ndarray],
     ):
         dt = p["dt"]
         f_curr = p["f"]
@@ -145,9 +180,7 @@ class SystemSolver(metaclass=ABCMeta):
         return newton_f
 
     def eval_Jf_trapezoidal(
-        self,
-        x_next: np.ndarray,
-        p: Dict[str, np.ndarray],
+        self, x_next: np.ndarray, p: Dict[str, np.ndarray],
     ):
         dt = p["dt"]
         u_next = p["u_next"]
