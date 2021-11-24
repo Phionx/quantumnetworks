@@ -31,6 +31,72 @@ def plot_full_evolution(xs, ts, labels=None, fig=None, ax=None, **kwargs):
     return fig, ax
 
 
+def plot_evolution_phase_space(
+    X, fig=None, ax=None, use_arrows=True, arrow_width=0.001, **kwargs
+):
+    fig = fig if fig is not None else plt.figure(figsize=(4, 4), dpi=200)
+    ax = ax if ax is not None else fig.subplots()
+    q = X[0, :]
+    p = X[1, :]
+    ls = kwargs.pop("ls", "--")
+    lw = kwargs.pop("lw", 0.5)
+    ax.plot(q, p, ls=ls, lw=lw, **kwargs)
+    if use_arrows:
+        insert_arrows(
+            q,
+            p,
+            ax,
+            fc="blue",
+            color="blue",
+            ec="blue",
+            num_arrows=50,
+            length_includes_head=True,
+            width=arrow_width,
+        )
+        insert_arrows(
+            q,
+            p,
+            ax,
+            fc="red",
+            color="red",
+            ec="red",
+            num_arrows=1,
+            length_includes_head=True,
+            width=arrow_width,
+        )  # start arrow
+    ax.set_xlabel("q")
+    ax.set_ylabel("p")
+    ax.set_title(f"Phase Space Evolution")
+    ax.set_aspect("equal", adjustable="box")
+    fig.tight_layout()
+    ax.grid()
+    return fig, ax
+
+
+def plot_full_evolution_phase_space(xs, **kwargs):
+    num_modes = len(xs) // 2
+    fig, axs = plt.subplots(
+        1, num_modes, figsize=(4 * num_modes, 4), dpi=200, squeeze=False
+    )
+    axs = axs[0]
+    for i in range(num_modes):
+        plot_evolution_phase_space(xs[2 * i : 2 * i + 2], fig=fig, ax=axs[i], **kwargs)
+        axs[i].set_xlabel(f"$q_{i+1}$")
+        axs[i].set_ylabel(f"$p_{i+1}$")
+    return fig, axs
+
+
+def insert_arrows(x, y, ax, num_arrows=10, **kwargs):
+    N = len(x)
+    for i in range(0, N, N // num_arrows + 1):
+        x_val = x[i]
+        y_val = y[i]
+        dx = x[i + 1] - x[i]
+        dy = y[i + 1] - y[i]
+        ax.arrow(x_val, y_val, dx, dy, **kwargs)
+    return ax
+
+
 def animate_evolution(
     xs,
     ts,
