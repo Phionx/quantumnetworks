@@ -160,7 +160,7 @@ class SystemSolver(metaclass=ABCMeta):
                             dt = dt * factor
                             print("dt increase: ", dt)
                         elif slope > threshold_max:
-                            dt = dt / factor
+                            dt = max(dt / factor, dt_init)
                             print("dt decrease: ", dt)
                 ts_dynamic.append(t_curr)
                 t_curr += dt
