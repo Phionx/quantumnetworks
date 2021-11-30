@@ -109,6 +109,7 @@ def animate_evolution(
     animation_time=5,
     xlabel="q",
     ylabel="p",
+    save_animation=False,
     **kwargs,
 ):
     if len(xs) % 2 != 0:
@@ -168,6 +169,8 @@ def animate_evolution(
         blit=True,
     )
     fig.tight_layout()
+    if save_animation:
+        anim.save("animation.gif", writer="pillow", fps=60)
     html = HTML(anim.to_jshtml())
     display(html)
     plt.close()

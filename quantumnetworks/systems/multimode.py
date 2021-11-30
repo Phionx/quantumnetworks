@@ -247,7 +247,14 @@ class MultiModeSystem(SystemSolver):
         return draw_graph(G, **kwargs)
 
     def animate_networkx(
-        self, xs, ts, pos=None, num_frames=200, animation_time=5, **kwargs,
+        self,
+        xs,
+        ts,
+        pos=None,
+        num_frames=200,
+        animation_time=5,
+        save_animation=False,
+        **kwargs,
     ):
         # https://stackoverflow.com/questions/43646550/how-to-use-an-update-function-to-animate-a-networkx-graph-in-matplotlib-2-0-0
         if len(xs) % 2 != 0:
@@ -295,6 +302,8 @@ class MultiModeSystem(SystemSolver):
         anim = animation.FuncAnimation(
             fig, animate, frames=num_frames, interval=interval, repeat=True
         )
+        if save_animation:
+            anim.save("animation.gif", writer="pillow", fps=60)
         html = HTML(anim.to_jshtml())
         display(html)
         plt.close()
