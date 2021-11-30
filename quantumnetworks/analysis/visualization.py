@@ -1,10 +1,14 @@
 """
 Visualization Tools
 """
+
 import numpy as np
 import matplotlib.pyplot as plt
+import networkx as nx
+
 from matplotlib import animation
 from IPython.display import HTML, display
+import networkx as nx
 
 
 def plot_evolution(x, ts, fig=None, ax=None, **kwargs):
@@ -105,6 +109,7 @@ def animate_evolution(
     animation_time=5,
     xlabel="q",
     ylabel="p",
+    save_animation=False,
     **kwargs,
 ):
     if len(xs) % 2 != 0:
@@ -164,7 +169,63 @@ def animate_evolution(
         blit=True,
     )
     fig.tight_layout()
+    if save_animation:
+        anim.save("animation.gif", writer="pillow", fps=60)
     html = HTML(anim.to_jshtml())
     display(html)
     plt.close()
     return fig, axs
+
+
+def draw_graph(graph: nx.Graph, ax=None, pos=None, **kwargs):
+    """
+    Plots 2D graphs in IPython/Jupyter.
+
+    Args:
+        graph (rx.PyGraph): graph to be plotted
+        dpi (int): dpi used for Figure. Defaults to dynamically sized value based on node count.
+        node_size (int): size of node used for `mpl_draw`. Defaults to dynamically sized value based on node count.
+        font_size (float): font size used for `mpl_draw`. Defaults to dynamically sized value based on node count.
+
+    Returns:
+        (figure, axes): A matplotlib Figure and Axes object
+    """
+    # Figure
+    dpi = kwargs.pop("dpi", 200)
+
+    if ax is None:
+        fig = plt.figure(dpi=dpi)
+        ax = fig.subplots()
+    fig = ax.get_figure()
+
+    # Graph
+
+    font_size = kwargs.pop("font_size", 20)
+    node_size = kwargs.pop("node_size", 2000)
+    node_color = kwargs.pop("node_color", "pink")
+    edge_color = kwargs.pop("edge_color", "black")
+
+    edge_labels = dict(
+        [((n1, n2), np.around(d["weight"], 3)) for n1, n2, d in graph.edges(data=True)]
+    )
+    pos = nx.spring_layout(graph) if pos is None else pos
+
+    nx.draw_networkx(
+        graph,
+        pos,
+        ax=ax,
+        edge_color=edge_color,
+        node_size=node_size,
+        node_color=node_color,
+        font_size=font_size,
+        labels={node: node for node in graph.nodes()},
+        **kwargs,
+    )
+
+    nx.draw_networkx_edge_labels(
+        graph, ax=ax, pos=pos, edge_labels=edge_labels, font_size=font_size
+    )
+    ax.collections[0].set_edgecolor("#000000")
+    fig.tight_layout()
+    return (fig, ax, pos)
+
