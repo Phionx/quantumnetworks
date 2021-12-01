@@ -117,55 +117,52 @@ class SystemSolver(metaclass=ABCMeta):
 
         return np.real(X)
 
-    def trapezoidal(
-        self,
-        x_start: np.ndarray,
-        ts: np.ndarray,
-        return_last=False,
-        dynamic_dt=False,
-        **kwargs
+    def trapezoidal_dynamic(
+        self, x_start: np.ndarray, ts: np.ndarray, return_last=False, **kwargs
     ):
-        X = 1.0 * np.zeros(
-            (x_start.size, 100000 * ts.size)
-        )  # TODO: accomodating varying dt, hotfix
+
+        # parameters
+        factor = kwargs.pop("factor", 2)
+        threshold_min = kwargs.pop("threshold_min", 0.5)
+        threshold_max = kwargs.pop("threshold_max", 2)
+
+        # initialization
+        X = []
+        X = 1.0 * np.zeros((x_start.size, ts.size))
         X[:, 0] = x_start
 
-        # dynamic dt
         tf = np.max(ts)
         ti = np.min(ts)
         dt_init = ts[1] - ts[0]
         dt = dt_init
         t_curr = ti
         ts_dynamic = []
-        factor = 2
-        threshold_min = 0.05
-        threshold_max = 2
-
         i = 0
 
         u = self.eval_u(ts[0])
         u_next = self.eval_u(ts[1])
-        while i < ts.size - 1 and t_curr < tf:
+
+        while t_curr <= tf:
             f = self.eval_f(X[:, i], u)
-            if dynamic_dt:
-                if i > 0:
-                    denom = np.abs(X[0, i]) ** 2
-                    if denom > 0:
-                        perc_change = (
-                            np.abs(X[0, i] - X[0, i - 1]) ** 2 / denom
-                        )  # TODO: make a better dynamic condition...
-                        slope = perc_change / dt
-                        if slope < threshold_min:
-                            # slow varying
-                            dt = dt * factor
-                            print("dt increase: ", dt)
-                        elif slope > threshold_max:
-                            dt = max(dt / factor, dt_init)
-                            print("dt decrease: ", dt)
-                ts_dynamic.append(t_curr)
-                t_curr += dt
-            else:
-                dt = ts[i + 1] - ts[i]
+
+            # UPDATE dt
+            if i > 0:  # only update after the first iteration
+                denom = np.abs(X[0, i]) ** 2
+                if denom > 0:
+                    max_perc_change = np.max(np.abs(X[:, i] - X[:, i - 1]) ** 2) / denom
+                    slope = max_perc_change / dt
+                    if slope < threshold_min:
+                        # slow varying
+                        dt = dt * factor
+                        # print("dt increase: ", dt)
+                    elif slope > threshold_max:
+                        # fast varying
+                        dt = max(dt / factor, dt_init)
+                        # print("dt decrease: ", dt)
+            ts_dynamic.append(t_curr)
+            t_curr += dt
+
+            # solve next time step
             x_next_guess = X[:, i] + dt * f  # use Euler as a good initial guess
             p = {"dt": dt, "f": f, "x": X[:, i], "u_next": u_next}
             X[:, i + 1], _ = self.newton(
@@ -183,10 +180,45 @@ class SystemSolver(metaclass=ABCMeta):
         if return_last:
             return X[:, -1]
 
+        ts_dynamic = np.array(ts_dynamic)
+        return (X[:, : ts_dynamic.size], ts_dynamic)
+
+    def trapezoidal(
+        self,
+        x_start: np.ndarray,
+        ts: np.ndarray,
+        return_last=False,
+        dynamic_dt=False,
+        **kwargs
+    ):
         if dynamic_dt:
-            ts_dynamic = np.array(ts_dynamic)
-            return (X[:, : ts_dynamic.size], ts_dynamic)
-        return X[:, : ts.size]
+            return self.trapezoidal_dynamic(x_start, ts, return_last, **kwargs)
+
+        X = 1.0 * np.zeros((x_start.size, ts.size))
+        X[:, 0] = x_start
+
+        u = self.eval_u(ts[0])
+        u_next = self.eval_u(ts[1])
+        for i in range(0, ts.size - 1):
+            f = self.eval_f(X[:, i], u)
+            dt = ts[i + 1] - ts[i]
+            x_next_guess = X[:, i] + dt * f  # use Euler as a good initial guess
+            p = {"dt": dt, "f": f, "x": X[:, i], "u_next": u_next}
+            X[:, i + 1], _ = self.newton(
+                x_next_guess,
+                p,
+                self.eval_f_trapezoidal,
+                self.eval_Jf_trapezoidal,
+                **kwargs,
+            )
+            u = u_next
+            if i < ts.size - 2:
+                u_next = self.eval_u(ts[i + 2])
+
+        if return_last:
+            return X[:, -1]
+
+        return X
 
     def eval_f_shooting_newton(self, x: np.ndarray, p: Dict[str, np.ndarray]):
         ts = p["ts"]
