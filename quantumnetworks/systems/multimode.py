@@ -4,8 +4,13 @@ Driven Multi-Mode Mode Linear System with Beam-Splitter Couplings
 from typing import Dict, Any, List
 import numpy as np
 import os
+import networkx as nx
+import matplotlib.pyplot as plt
 
 from quantumnetworks.systems.base import SystemSolver
+from quantumnetworks.analysis.visualization import draw_graph
+from IPython.display import HTML, display
+from matplotlib import animation
 
 
 class MultiModeSystem(SystemSolver):
@@ -224,3 +229,83 @@ class MultiModeSystem(SystemSolver):
 
     def eval_Jf(self, x: np.ndarray, u: np.ndarray) -> np.ndarray:
         return self.A + self.Jf_nl(x)
+
+    # Plotting
+    # =================================
+    def draw_network(self, **kwargs):
+        G = nx.Graph()
+        for i in range(self.params["num_modes"]):
+            G.add_node(i)
+
+        couplings = self.params["couplings"]
+
+        for i in range(self.params["num_modes"]):
+            for j in range(0, i + 1):
+                if couplings[i, j] > 0:
+                    G.add_edge(i, j, weight=couplings[i, j])
+
+        return draw_graph(G, **kwargs)
+
+    def animate_networkx(
+        self,
+        xs,
+        ts,
+        pos=None,
+        num_frames=200,
+        animation_time=5,
+        save_animation=False,
+        **kwargs,
+    ):
+        # https://stackoverflow.com/questions/43646550/how-to-use-an-update-function-to-animate-a-networkx-graph-in-matplotlib-2-0-0
+        if len(xs) % 2 != 0:
+            raise ValueError("Please enter state data with an even number of rows.")
+
+        num_modes = len(xs) // 2
+        num_points = len(ts)
+
+        fig, ax = plt.subplots(1, figsize=(4, 4), squeeze=False)
+        ax = ax[0][0]
+        # ax.set_aspect("equal", adjustable="box")
+
+        # color scale
+        max_amp = 0
+        for i in range(num_modes):
+            q = xs[2 * i, :]
+            p = xs[2 * i + 1, :]
+            max_amp_i = np.max(q ** 2 + p ** 2)
+            max_amp = max_amp_i if max_amp_i > max_amp else max_amp
+
+        if pos is None:
+            _, _, pos = self.draw_network(ax=ax)
+
+        def animate(j):
+            indx = j * num_points // num_frames
+            ax.clear()
+            node_color = []
+            for i in range(num_modes):
+                q = xs[2 * i, indx]
+                p = xs[2 * i + 1, indx]
+                alpha = (q ** 2 + p ** 2) / max_amp
+                node_color.append((1, 0, 0, alpha))
+            self.draw_network(ax=ax, node_color=node_color, pos=pos)
+            ax.set_title(f"t = {ts[indx]:.2f}")
+            # ax.margins(0.05)
+            ax.spines["top"].set_visible(False)
+            ax.spines["right"].set_visible(False)
+            ax.spines["bottom"].set_visible(False)
+            ax.spines["left"].set_visible(False)
+            ax.get_xaxis().set_ticks([])
+            ax.get_yaxis().set_ticks([])
+            fig.tight_layout()
+
+        interval = animation_time * 1000 // num_frames
+        anim = animation.FuncAnimation(
+            fig, animate, frames=num_frames, interval=interval, repeat=True
+        )
+        if save_animation:
+            anim.save("animation.gif", writer="pillow", fps=60)
+        html = HTML(anim.to_jshtml())
+        display(html)
+        plt.close()
+        return fig, ax
+
