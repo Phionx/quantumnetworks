@@ -177,7 +177,14 @@ def animate_evolution(
     return fig, axs
 
 
-def draw_graph(graph: nx.Graph, ax=None, pos=None, **kwargs):
+def draw_graph(
+    graph: nx.Graph,
+    ax=None,
+    pos=None,
+    with_node_labels=True,
+    with_edge_labels=True,
+    **kwargs,
+):
     """
     Plots 2D graphs in IPython/Jupyter.
 
@@ -218,13 +225,15 @@ def draw_graph(graph: nx.Graph, ax=None, pos=None, **kwargs):
         node_size=node_size,
         node_color=node_color,
         font_size=font_size,
-        labels={node: node for node in graph.nodes()},
+        with_labels=with_node_labels,
+        labels={node: node for node in graph.nodes()} if with_node_labels else None,
         **kwargs,
     )
 
-    nx.draw_networkx_edge_labels(
-        graph, ax=ax, pos=pos, edge_labels=edge_labels, font_size=font_size
-    )
+    if with_edge_labels:
+        nx.draw_networkx_edge_labels(
+            graph, ax=ax, pos=pos, edge_labels=edge_labels, font_size=font_size
+        )
     ax.collections[0].set_edgecolor("#000000")
     fig.tight_layout()
     return (fig, ax, pos)

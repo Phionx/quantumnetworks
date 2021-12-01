@@ -250,6 +250,7 @@ class MultiModeSystem(SystemSolver):
         self,
         xs,
         ts,
+        ax=None,
         pos=None,
         num_frames=200,
         animation_time=5,
@@ -263,8 +264,11 @@ class MultiModeSystem(SystemSolver):
         num_modes = len(xs) // 2
         num_points = len(ts)
 
-        fig, ax = plt.subplots(1, figsize=(4, 4), squeeze=False)
-        ax = ax[0][0]
+        if ax is None:
+            fig, ax = plt.subplots(1, figsize=(4, 4), squeeze=False)
+            ax = ax[0][0]
+        fig = ax.get_figure()
+
         # ax.set_aspect("equal", adjustable="box")
 
         # color scale
@@ -287,7 +291,7 @@ class MultiModeSystem(SystemSolver):
                 p = xs[2 * i + 1, indx]
                 alpha = (q ** 2 + p ** 2) / max_amp
                 node_color.append((1, 0, 0, alpha))
-            self.draw_network(ax=ax, node_color=node_color, pos=pos)
+            self.draw_network(ax=ax, node_color=node_color, pos=pos, **kwargs)
             ax.set_title(f"t = {ts[indx]:.2f}")
             # ax.margins(0.05)
             ax.spines["top"].set_visible(False)
