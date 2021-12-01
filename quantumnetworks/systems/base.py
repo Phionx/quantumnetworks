@@ -8,7 +8,7 @@ import numpy as np
 
 class SystemSolver(metaclass=ABCMeta):
     def __init__(self, params: Dict[str, Any]) -> None:
-        self.params = params
+        self.params = params.copy()
         self._param_validation()
 
     @abstractmethod
@@ -36,14 +36,18 @@ class SystemSolver(metaclass=ABCMeta):
     def eval_Jf_numerical(
         self, x: np.ndarray, u: np.ndarray, dx: float = 1e-7
     ) -> np.ndarray:
+        return self.eval_numerical_gradient(self.eval_f, x, u, dx=dx,)
+
+    def eval_numerical_gradient(self, eval_f, x: np.ndarray, *args, **kwargs):
         x = x.astype(float)
-        f = self.eval_f(x, u)
+        dx = kwargs.get("dx", 1e-7)
+        f = eval_f(x, *args, **kwargs)
         J = np.zeros((x.size, x.size))
         for i, _ in enumerate(x):
             delta_x = np.zeros(x.size)
             delta_x[i] = dx
             new_x = x + delta_x
-            f_new = self.eval_f(new_x, u)
+            f_new = eval_f(new_x, *args, **kwargs)
             delta_f = f_new - f
             J[:, i] = delta_f / dx
         return J
@@ -71,7 +75,83 @@ class SystemSolver(metaclass=ABCMeta):
             X[:, i + 1] = X[:, i] + dt * f
         return X
 
-    def trapezoidal(self, x_start: np.ndarray, ts: np.ndarray, **kwargs):
+    def trapezoidal_dynamic(
+        self, x_start: np.ndarray, ts: np.ndarray, return_last=False, **kwargs
+    ):
+
+        # parameters
+        factor = kwargs.pop("factor", 2)
+        threshold_min = kwargs.pop("threshold_min", 0.5)
+        threshold_max = kwargs.pop("threshold_max", 2)
+
+        # initialization
+        X = []
+        X = 1.0 * np.zeros((x_start.size, ts.size))
+        X[:, 0] = x_start
+
+        tf = np.max(ts)
+        ti = np.min(ts)
+        dt_init = ts[1] - ts[0]
+        dt = dt_init
+        t_curr = ti
+        ts_dynamic = []
+        i = 0
+
+        u = self.eval_u(ts[0])
+        u_next = self.eval_u(ts[1])
+
+        while t_curr <= tf:
+            f = self.eval_f(X[:, i], u)
+
+            # UPDATE dt
+            if i > 0:  # only update after the first iteration
+                denom = np.abs(X[0, i]) ** 2
+                if denom > 0:
+                    max_perc_change = np.max(np.abs(X[:, i] - X[:, i - 1]) ** 2) / denom
+                    slope = max_perc_change / dt
+                    if slope < threshold_min:
+                        # slow varying
+                        dt = dt * factor
+                        # print("dt increase: ", dt)
+                    elif slope > threshold_max:
+                        # fast varying
+                        dt = max(dt / factor, dt_init)
+                        # print("dt decrease: ", dt)
+            ts_dynamic.append(t_curr)
+            t_curr += dt
+
+            # solve next time step
+            x_next_guess = X[:, i] + dt * f  # use Euler as a good initial guess
+            p = {"dt": dt, "f": f, "x": X[:, i], "u_next": u_next}
+            X[:, i + 1], _ = self.newton(
+                x_next_guess,
+                p,
+                self.eval_f_trapezoidal,
+                self.eval_Jf_trapezoidal,
+                **kwargs,
+            )
+            u = u_next
+            if i < ts.size - 2:
+                u_next = self.eval_u(ts[i + 2])
+            i += 1
+
+        if return_last:
+            return X[:, -1]
+
+        ts_dynamic = np.array(ts_dynamic)
+        return (X[:, : ts_dynamic.size], ts_dynamic)
+
+    def trapezoidal(
+        self,
+        x_start: np.ndarray,
+        ts: np.ndarray,
+        return_last=False,
+        dynamic_dt=False,
+        **kwargs
+    ):
+        if dynamic_dt:
+            return self.trapezoidal_dynamic(x_start, ts, return_last, **kwargs)
+
         X = 1.0 * np.zeros((x_start.size, ts.size))
         X[:, 0] = x_start
 
@@ -82,14 +162,46 @@ class SystemSolver(metaclass=ABCMeta):
             dt = ts[i + 1] - ts[i]
             x_next_guess = X[:, i] + dt * f  # use Euler as a good initial guess
             p = {"dt": dt, "f": f, "x": X[:, i], "u_next": u_next}
-            X[:, i + 1], _ = self.newton(x_next_guess, p, **kwargs)
+            X[:, i + 1], _ = self.newton(
+                x_next_guess,
+                p,
+                self.eval_f_trapezoidal,
+                self.eval_Jf_trapezoidal,
+                **kwargs,
+            )
             u = u_next
             if i < ts.size - 2:
                 u_next = self.eval_u(ts[i + 2])
 
+        if return_last:
+            return X[:, -1]
+
         return X
 
-    def eval_f_newton(
+    def eval_f_shooting_newton(self, x: np.ndarray, p: Dict[str, np.ndarray]):
+        ts = p["ts"]
+        return self.trapezoidal(x, ts, return_last=True) - x
+
+    def eval_Jf_shooting_newton_numerical(
+        self, x: np.ndarray, p: Dict[str, np.ndarray]
+    ):
+        ts = p["ts"]
+        Jf = self.eval_numerical_gradient(
+            self.trapezoidal, x, ts, return_last=True
+        ) - np.eye(x.size)
+        return Jf
+
+    def eval_solve_shooting_newton(self, x0: np.ndarray, ts: np.ndarray, **kwargs):
+        p = {"ts": ts}
+        return self.newton(
+            x0,
+            p,
+            self.eval_f_shooting_newton,
+            self.eval_Jf_shooting_newton_numerical,
+            **kwargs,
+        )[0]
+
+    def eval_f_trapezoidal(
         self, x_next: np.ndarray, p: Dict[str, np.ndarray],
     ):
         dt = p["dt"]
@@ -100,7 +212,7 @@ class SystemSolver(metaclass=ABCMeta):
         newton_f = x_curr - x_next + 1 / 2 * dt * (f_curr + self.eval_f(x_next, u_next))
         return newton_f
 
-    def eval_Jf_newton(
+    def eval_Jf_trapezoidal(
         self, x_next: np.ndarray, p: Dict[str, np.ndarray],
     ):
         dt = p["dt"]
@@ -112,6 +224,8 @@ class SystemSolver(metaclass=ABCMeta):
         self,
         x0: np.ndarray,
         p: Dict[str, np.ndarray],
+        eval_f,
+        eval_Jf,
         err_f: float = 1e-8,
         err_delta_x: float = 1e-8,
         rel_delta_x=1e-8,
@@ -122,14 +236,18 @@ class SystemSolver(metaclass=ABCMeta):
         **kwargs
     ):
         """
-        The newton method is used to find the zeros of a nonlinear function. 
+        The newton method is used to find the zeros of a nonlinear function.
         Here, we solve for the zero of a particular function used for the Trapezoidal method.
 
         Arguments:
             x0 (np.ndarray): initial guess
-            p (Dict[str, np.ndarray]): 
+            p (Dict[str, np.ndarray]):
                 key: description of array
                 value: array used in evaluating self.eval_f_newton
+            eval_f (function):
+                function used to calculate f
+            eval_Jf (function):
+                function used to calculate gradient of f
             err_f (float): ||f||_{inf} <= err_f condition for convergence
             err_delta_x (float): ||delta_x||_{inf} <= err_f condition for convergence
             rel_delta_x (float): ||delta_x||_{inf}/max(|X_k|) <= err_f condition for convergence
@@ -137,9 +255,9 @@ class SystemSolver(metaclass=ABCMeta):
             use_gcr (bool): whether to use GCR instead of calculating Jf to find delta_x from Jf delta_x = -f
             finite_difference (bool): whetherr to use finite difference to calculate Jf
             return_iterations (bool): whether to return all intermediate solutions or just the final solution
-        
+
         Returns:
-            (all) X[:k,:] or (final) X[k-1,:]: 
+            (all) X[:k,:] or (final) X[k-1,:]:
                 all intermediate solutions or just the final solution
             converged (bool): whether Newton converged or not
         """
@@ -147,7 +265,7 @@ class SystemSolver(metaclass=ABCMeta):
 
         k = 0
         X[k, :] = x0
-        f = self.eval_f_newton(X[k, :], p)
+        f = eval_f(X[k, :], p)
         err_f_k = np.linalg.norm(f, np.inf)
 
         delta_x = 0
@@ -166,13 +284,13 @@ class SystemSolver(metaclass=ABCMeta):
                         "Coming soon! Need to generalize eval_Jf_numerical."
                     )
                 else:
-                    Jf = self.eval_Jf_newton(X[k, :], p)
+                    Jf = eval_Jf(X[k, :], p)
                 delta_x = -np.linalg.solve(Jf, f)
             else:
-                delta_x, _ = self.tgcr_matrix_free(-f, X[k, :], p, **kwargs)
+                delta_x, _ = self.tgcr_matrix_free(-f, X[k, :], p, eval_f, **kwargs)
             X[k + 1, :] = X[k, :] + delta_x
             k += 1
-            f = self.eval_f_newton(X[k, :], p)
+            f = eval_f(X[k, :], p)
             err_f_k = np.linalg.norm(f, np.inf)
             err_delta_x_k = np.linalg.norm(delta_x, np.inf)
             rel_delta_x_k = np.linalg.norm(delta_x, np.inf) / np.max(np.abs(X[k, :]))
@@ -192,6 +310,7 @@ class SystemSolver(metaclass=ABCMeta):
         b: np.ndarray,
         xk: np.ndarray,
         params: Dict[str, np.ndarray],
+        eval_f,
         epsilon: float = 1e-6,
         tol: float = 0.1,
         max_iter: int = 100,
@@ -207,6 +326,8 @@ class SystemSolver(metaclass=ABCMeta):
             params (Dict[str,np.ndarray]):
                 key: description of array
                 value: array used in evaluating self.eval_f_newton
+            eval_f (function):
+                function used to calculate f
             epsilon (float): step size
             tol (float): convergence tolerance
             max_iter (int): maximum number of iterations
@@ -227,11 +348,7 @@ class SystemSolver(metaclass=ABCMeta):
 
         for i in range(max_iter):
             p[i, :] = r
-            Ap[i, :] = (
-                1.0
-                / epsilon
-                * (self.eval_f_newton(xk + epsilon * p[i, :], params) - f_xk)
-            )
+            Ap[i, :] = 1.0 / epsilon * (eval_f(xk + epsilon * p[i, :], params) - f_xk)
 
             for j in range(0, i):
                 beta = Ap[i, :].T * Ap[j, :]
@@ -259,7 +376,7 @@ class SystemSolver(metaclass=ABCMeta):
 
     def copy(self):
         """
-        Just copies params into another instance of the system class. 
+        Just copies params into another instance of the system class.
         Not a full copy (so that stored analysis can be reset).
         """
         cls = self.__class__

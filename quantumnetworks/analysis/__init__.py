@@ -1,6 +1,6 @@
 """
 Analysis Tools
 """
-from .solver_optimizer import SolverOptimizer
-from .quantities import *
 from .visualization import *
+from .quantities import *
+from .performance import *
