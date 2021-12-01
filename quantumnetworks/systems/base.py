@@ -46,10 +46,6 @@ class SystemSolver(metaclass=ABCMeta):
         self, x: np.ndarray, u: np.ndarray, A: np.ndarray, B: np.ndarray
     ) -> np.ndarray:
         u_full = np.append(1, u)
-        # print(A.shape)
-        # print(x.shape)
-        # print(B.shape)
-        # print(u_full.shape)
         return A.dot(x) + B.dot(u_full)
 
     def eval_Jf_numerical(
@@ -154,11 +150,9 @@ class SystemSolver(metaclass=ABCMeta):
                     if slope < threshold_min:
                         # slow varying
                         dt = dt * factor
-                        # print("dt increase: ", dt)
                     elif slope > threshold_max:
                         # fast varying
                         dt = max(dt / factor, dt_init)
-                        # print("dt decrease: ", dt)
             ts_dynamic.append(t_curr)
             t_curr += dt
 
