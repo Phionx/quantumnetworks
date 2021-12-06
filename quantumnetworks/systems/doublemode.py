@@ -1,6 +1,9 @@
 """
+DEPRECATED: please use MultiModeSystem instead.
 Driven Double-Mode Linear System with Beam-Splitter Coupling
 """
+import warnings
+
 from typing import Dict
 import numpy as np
 
@@ -13,6 +16,9 @@ class DoubleModeSystem(SystemSolver):
         Arguments:
             A_in (function): takes in time t and returns np.ndarray
         """
+        warnings.warn(
+            "Please use MultiModeSystem instead.", DeprecationWarning, stacklevel=2
+        )
         super().__init__(params)
         self._A = None
         self._B = None

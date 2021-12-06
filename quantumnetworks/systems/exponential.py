@@ -1,5 +1,5 @@
 """
-Exponential system
+Example Exponential System
 """
 import numpy as np
 

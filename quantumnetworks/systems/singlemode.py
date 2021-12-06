@@ -1,8 +1,10 @@
 """
+DEPRECATED: please use MultiModeSystem instead.
 Driven Single Mode Linear System
 """
 from typing import Dict, Any
 import numpy as np
+import warnings
 
 from quantumnetworks.systems.base import SystemSolver
 
@@ -13,6 +15,9 @@ class SingleModeSystem(SystemSolver):
         Arguments:
             A_in (function): takes in time t and returns np.ndarray
         """
+        warnings.warn(
+            "Please use MultiModeSystem instead.", DeprecationWarning, stacklevel=2
+        )
         super().__init__(params)
         self._A = None
         self._B = None
