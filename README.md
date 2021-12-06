@@ -12,6 +12,8 @@
 ```sh
 pip install quantumnetworks
 ```
+If you also want to download the dependencies needed to run optional tutorials, please use `pip install quantumnetworks[dev]` or `pip install 'quantumnetworks[dev]'` (for `zsh` users).
+
 
 To check if the installation was successful, run:
 ```python
@@ -28,7 +30,7 @@ cd quantumnetworks
 pip install --upgrade .
 ```
 
-If you also want to download the dependencies needed to run optional visualization tools, please use `pip install --upgrade .[visualization]` or `pip install --upgrade '.[visualization]'` (for `zsh` users).
+If you also want to download the dependencies needed to run optional tutorials, please use `pip install --upgrade .[dev]` or `pip install --upgrade '.[dev]'` (for `zsh` users).
 
 
 #### Installation for Devs
@@ -37,9 +39,9 @@ If you intend to contribute to this project, please install `quantumnetworks` in
 ```sh
 git clone git@github.com:Phionx/quantumnetworks.git
 cd quantumnetworks
-pip install -e .[visualization]
+pip install -e .[dev]
 ```
-Please use `pip install -e '.[visualization]'` if you are a `zsh` user.
+Please use `pip install -e '.[dev]'` if you are a `zsh` user.
 
 ## Motivation
 

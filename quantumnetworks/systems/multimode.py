@@ -8,7 +8,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 
 from quantumnetworks.systems.base import SystemSolver
-from quantumnetworks.analysis.visualization import draw_graph
+from quantumnetworks.utils.visualization import draw_graph
 from IPython.display import HTML, display
 from matplotlib import animation
 
@@ -55,7 +55,10 @@ class MultiModeSystem(SystemSolver):
 
         couplings_raw = self.params.get("couplings")
         if couplings_raw is not None:
-            self.params["couplings"] = self.parse_couplings(np.array(couplings_raw))
+            self.params["couplings"] = np.array(couplings_raw)
+            self.params["couplings_matrix"] = self.parse_couplings(
+                self.params["couplings"]
+            )
         else:
             raise Exception("Please provide a `couplings` param")
 
@@ -83,7 +86,7 @@ class MultiModeSystem(SystemSolver):
 
         # coupling (in 2pi * GHz)
         couplings_raw_data = self.load_file(folder + os.sep + "couplings.txt")
-        self.params["couplings"] = self.parse_couplings(couplings_raw_data)
+        self.params["couplings_matrix"] = self.parse_couplings(couplings_raw_data)
 
     def parse_couplings(self, couplings_raw_data):
         num_modes = self.params["num_modes"]
@@ -117,7 +120,7 @@ class MultiModeSystem(SystemSolver):
             omegas = self.params["omegas"]
             kappas = self.params["kappas"]
             gammas = self.params["gammas"]
-            couplings = self.params["couplings"]
+            couplings = self.params["couplings_matrix"]
             A = np.zeros((num_modes * 2, num_modes * 2))
 
             # omegas
@@ -154,11 +157,12 @@ class MultiModeSystem(SystemSolver):
             num_drives = self.params["num_drives"]
 
             B = np.zeros((num_modes * 2, num_drives * 2))
+            j = 0
             for i, kappa in enumerate(kappas):
                 if kappa != 0:
-                    B[2 * i, 2 * i] = -np.sqrt(kappa)
-                    B[2 * i + 1, 2 * i + 1] = -np.sqrt(kappa)
-
+                    B[2 * i, 2 * j] = -np.sqrt(kappa)
+                    B[2 * i + 1, 2 * j + 1] = -np.sqrt(kappa)
+                    j += 1
             self._B = B
         return self._B
 
@@ -237,7 +241,7 @@ class MultiModeSystem(SystemSolver):
         for i in range(self.params["num_modes"]):
             G.add_node(i)
 
-        couplings = self.params["couplings"]
+        couplings = self.params["couplings_matrix"]
 
         for i in range(self.params["num_modes"]):
             for j in range(0, i + 1):
@@ -254,9 +258,10 @@ class MultiModeSystem(SystemSolver):
         pos=None,
         num_frames=200,
         animation_time=5,
-        save_animation=False,
+        save_animation=None,
         **kwargs,
     ):
+
         # https://stackoverflow.com/questions/43646550/how-to-use-an-update-function-to-animate-a-networkx-graph-in-matplotlib-2-0-0
         if len(xs) % 2 != 0:
             raise ValueError("Please enter state data with an even number of rows.")
@@ -268,8 +273,6 @@ class MultiModeSystem(SystemSolver):
             fig, ax = plt.subplots(1, figsize=(4, 4), squeeze=False)
             ax = ax[0][0]
         fig = ax.get_figure()
-
-        # ax.set_aspect("equal", adjustable="box")
 
         # color scale
         max_amp = 0
@@ -292,7 +295,7 @@ class MultiModeSystem(SystemSolver):
                 alpha = (q ** 2 + p ** 2) / max_amp
                 node_color.append((1, 0, 0, alpha))
             self.draw_network(ax=ax, node_color=node_color, pos=pos, **kwargs)
-            ax.set_title(f"t = {ts[indx]:.2f}")
+            ax.set_title(f"t = {ts[indx]:.2f} ns")
             # ax.margins(0.05)
             ax.spines["top"].set_visible(False)
             ax.spines["right"].set_visible(False)
@@ -306,8 +309,11 @@ class MultiModeSystem(SystemSolver):
         anim = animation.FuncAnimation(
             fig, animate, frames=num_frames, interval=interval, repeat=True
         )
-        if save_animation:
-            anim.save("animation.gif", writer="pillow", fps=60)
+        if save_animation is not None:
+            animation_title = (
+                save_animation if isinstance(save_animation, str) else "animation.gif"
+            )
+            anim.save(animation_title, writer="pillow", fps=60)
         html = HTML(anim.to_jshtml())
         display(html)
         plt.close()

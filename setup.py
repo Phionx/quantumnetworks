@@ -12,8 +12,9 @@ REQUIREMENTS = [
     "retworkx>=0.10.0",
     "IPython",
     "networkx",
+    "tqdm",
 ]
-EXTRA_REQUIREMENTS = {"dev": ["jupyterlab>=3.1.0", "tqdm"]}
+EXTRA_REQUIREMENTS = {"dev": ["jupyterlab>=3.1.0"]}
 
 # Read long description from README.
 README_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)), "README.md")
