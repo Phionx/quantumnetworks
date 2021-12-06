@@ -11,9 +11,11 @@ from IPython.display import HTML, display
 import networkx as nx
 
 
-def plot_evolution(x, ts, fig=None, ax=None, **kwargs):
+def plot_evolution(x, ts, x_min=None, x_max=None, fig=None, ax=None, **kwargs):
     fig = fig if fig is not None else plt.figure(figsize=(4, 3), dpi=200)
     ax = ax if ax is not None else fig.subplots()
+    if x_min is not None and x_max is not None:
+        ax.fill_between(ts, x_min, x_max, alpha=0.1)
     ax.plot(ts, x, **kwargs)
     ax.set_xlabel("Time")
     ax.set_ylabel("State")
@@ -21,14 +23,20 @@ def plot_evolution(x, ts, fig=None, ax=None, **kwargs):
     return fig, ax
 
 
-def plot_full_evolution(xs, ts, labels=None, fig=None, ax=None, **kwargs):
+def plot_full_evolution(
+    xs, ts, xs_min=None, xs_max=None, labels=None, fig=None, ax=None, **kwargs
+):
     fig = fig if fig is not None else plt.figure(figsize=(4, 3), dpi=200)
     ax = ax if ax is not None else fig.subplots()
     for i, x in enumerate(xs):
+        x_min = xs_min[i] if xs_min is not None else None
+        x_max = xs_max[i] if xs_max is not None else None
         label = str(i)
         if labels:
             label = labels[i]
-        plot_evolution(x, ts, fig=fig, ax=ax, label=label, **kwargs)
+        plot_evolution(
+            x, ts, x_min=x_min, x_max=x_max, fig=fig, ax=ax, label=label, **kwargs
+        )
 
     if labels:
         ax.legend()
