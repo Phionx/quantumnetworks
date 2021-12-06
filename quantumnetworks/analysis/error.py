@@ -24,11 +24,45 @@ class SystemError(metaclass=ABCMeta):
 
     @abstractmethod
     def calculate_error(self, method: str, *args, parse_output=lambda X: X, **kwargs):
+        """
+        Method to sample system solver with a parameters sampled form a distributino 
+        determined by parameter uncertainty. Stores runs in self.solves.
+
+        This is system specific.
+        
+        Args:
+            method (str): solver method of SystemSolver e.g. "trapezoidal" 
+            *args: arguments provided to solver method, e.g. ts, x0
+            parse_output (function pointer): 
+                how to parse output after solving, 
+                e.g. with dynamic trapezoidal parse_output = lambda X: X[0]
+            **kwargs: keyword arguments provided to solver method 
+        
+        """
         pass
 
     def run(
         self, method: str, *args, parse_output=lambda X: X, num_samples=11, **kwargs
     ):
+        """
+        Wrapper method on self.calculate_error to run sample-based error analysis. 
+        Stores results in self.solves.
+
+        General idea:
+            Let's say we measure parameter a ±  δa, b ±  δb, and c ±  δc. 
+            Then, to find the error in f(a,b,c), we can sample the parameter values 
+            of a* in the gaussian distribution centered around a with standard deviation of 
+            δa (and similarly for b* and c*) and calculate f(a*,b*,c*) multiple times. 
+            Then, we can take the standard deviation of that set of f(a*,b*,c*) values to find δf. 
+        
+        Args:
+            method (str): solver method of SystemSolver e.g. "trapezoidal" 
+            *args: arguments provided to solver method, e.g. ts, x0
+            parse_output (function pointer): 
+                how to parse output after solving, 
+                e.g. with dynamic trapezoidal parse_output = lambda X: X[0]
+            **kwargs: keyword arguments provided to solver method 
+        """
         self.solves["original"] = parse_output(
             getattr(self.system, method)(*args, **kwargs)
         )
@@ -82,9 +116,7 @@ class MultiModeError(SystemError):
 
         num_modes = params_original["num_modes"]
         num_variables = 4 * num_modes + len(couplings_original_dict)
-        scalings = np.random.normal(size=num_samples * num_variables).reshape(
-            num_samples, num_variables
-        )
+        scalings = np.random.normal(size=(num_samples, num_variables))
 
         self.solves["with_error"] = []
 
