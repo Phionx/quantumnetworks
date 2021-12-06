@@ -55,8 +55,9 @@ class MultiModeSystem(SystemSolver):
 
         couplings_raw = self.params.get("couplings")
         if couplings_raw is not None:
+            self.params["couplings"] = np.array(couplings_raw)
             self.params["couplings_matrix"] = self.parse_couplings(
-                np.array(couplings_raw)
+                self.params["couplings"]
             )
         else:
             raise Exception("Please provide a `couplings` param")

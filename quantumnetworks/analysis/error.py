@@ -42,8 +42,8 @@ class SystemError(metaclass=ABCMeta):
         fig, ax = plot_full_evolution(
             self.solves["original"],
             ts,
-            xs_min=self.solves["original"] - self.solves["std"],
-            xs_max=self.solves["original"] + self.solves["std"],
+            xs_min=(self.solves["original"] - self.solves["std"]),
+            xs_max=(self.solves["original"] + self.solves["std"]),
             **kwargs
         )
         ax.legend()
@@ -55,11 +55,33 @@ class MultiModeError(SystemError):
     def calculate_error(
         self, method: str, *args, num_samples=None, parse_output=lambda X: X, **kwargs
     ):
-        params = self.system.params.copy()
-        omegas_original = np.array(params["omegas"])
-        omegas_error = np.array(self.params_error["omegas"])
+        # =====================
+        def nonnegative(a):
+            a[a < 0] = 0
+            return a
 
-        num_variables = len(omegas_original)
+        def couplings_list2dict(cps):
+            # TODO: remove when couplings are represented by dict
+            return {(min(row[0], row[1]), max(row[0], row[1])): row[2] for row in cps}
+
+        def couplings_dict2list(cps):
+            return np.array([[key[0], key[1], val] for key, val in cps.items()])
+
+        # =====================
+        # error
+        omegas_error = np.array(self.params_error["omegas"])
+        kappas_error = np.array(self.params_error["kappas"])
+        gammas_error = np.array(self.params_error["gammas"])
+        kerrs_error = np.array(self.params_error["kerrs"])
+        couplings_error = couplings_list2dict(np.array(self.params_error["couplings"]))
+
+        params_original = self.system.params.copy()
+        couplings_original_dict = couplings_list2dict(params_original["couplings"])
+
+        params = self.system.params.copy()
+
+        num_modes = params_original["num_modes"]
+        num_variables = 4 * num_modes + len(couplings_original_dict)
         scalings = np.random.normal(size=num_samples * num_variables).reshape(
             num_samples, num_variables
         )
@@ -67,10 +89,31 @@ class MultiModeError(SystemError):
         self.solves["with_error"] = []
 
         for scaling_vec in tqdm(scalings):
-            # omegas
-            omegas_copy = omegas_original.copy()
-            omegas_copy += omegas_error * scaling_vec
-            params["omegas"] = omegas_copy
+            params["omegas"] = nonnegative(
+                params_original["omegas"] + omegas_error * scaling_vec[:num_modes]
+            )
+            params["kappas"] = nonnegative(
+                params_original["kappas"]
+                + kappas_error * scaling_vec[num_modes : num_modes * 2]
+            )
+            params["gammas"] = nonnegative(
+                params_original["gammas"]
+                + gammas_error * scaling_vec[num_modes * 2 : num_modes * 3]
+            )
+            params["kerrs"] = nonnegative(
+                params_original["gammas"]
+                + kerrs_error * scaling_vec[num_modes * 3 : num_modes * 4]
+            )
+            start = num_modes * 4
+            params["couplings"] = nonnegative(
+                couplings_dict2list(
+                    {
+                        key: val + scaling_vec[start + j] * couplings_error[key]
+                        for j, (key, val) in enumerate(couplings_original_dict.items())
+                    }
+                )
+            )
+
             system = MultiModeSystem(params)
             self.solves["with_error"].append(
                 parse_output(getattr(system, method)(*args, **kwargs))
