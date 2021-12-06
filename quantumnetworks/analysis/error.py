@@ -27,7 +27,7 @@ class SystemError(metaclass=ABCMeta):
         pass
 
     def run(
-        self, method: str, *args, parse_output=lambda X: X, num_samples=None, **kwargs
+        self, method: str, *args, parse_output=lambda X: X, num_samples=11, **kwargs
     ):
         self.solves["original"] = parse_output(
             getattr(self.system, method)(*args, **kwargs)
@@ -53,7 +53,7 @@ class SystemError(metaclass=ABCMeta):
 
 class MultiModeError(SystemError):
     def calculate_error(
-        self, method: str, *args, num_samples=None, parse_output=lambda X: X, **kwargs
+        self, method: str, *args, num_samples=11, parse_output=lambda X: X, **kwargs
     ):
         # =====================
         def nonnegative(a):
