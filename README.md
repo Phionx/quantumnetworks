@@ -3,6 +3,10 @@
 [![License](https://img.shields.io/github/license/Phionx/quantumnetworks.svg?style=popout-square)](https://opensource.org/licenses/MIT)
 [![](https://img.shields.io/github/release/Phionx/quantumnetworks.svg?style=popout-square)](https://github.com/Phionx/quantumnetworks/releases)
 [![](https://img.shields.io/pypi/dm/quantumnetworks.svg?style=popout-square)](https://pypi.org/project/quantumnetworks/)
+
+---
+
+*Please checkout this [presentation](https://docs.google.com/presentation/d/1-2YzJWmRjBr4XqfV-qTjjIAvsZ6RQoBXQy5Cf2bfN64/edit?usp=sharing) for a quick overview of `quantumnetworks`!*
 ## Installation
 
 *Conda users, please make sure to `conda install pip` before running any pip installation if you want to install `quantumnetworks` into your conda environment.*
