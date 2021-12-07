@@ -14,12 +14,24 @@ from tqdm import tqdm
 
 class SystemError(metaclass=ABCMeta):
     def __init__(self, system: SystemSolver, params_error: Dict[str, Any]) -> None:
+        """
+        Initialize SystemError tool.
+
+        Args:
+            system (SystemSolver): instance of SystemSolver subclass
+            params_error (dict):
+                key (str): parameter name
+                val (Any): any parameter uncertainty value
+        """
         self.system = system
         self.params_error = params_error
         self.solves = None
         self.reset_solves()
 
     def reset_solves(self):
+        """
+        Reset self.solves.
+        """
         self.solves = {"original": None, "with_error": [], "std": None}
 
     @abstractmethod
@@ -73,6 +85,17 @@ class SystemError(metaclass=ABCMeta):
         self.solves["std"] = np.std(solves_with_error, axis=0)
 
     def plot(self, ts, **kwargs):
+        """
+        Plot state evolution along with error bars.
+        Wrapper on plot_full_evolution.
+
+        Args:
+            ts (np.ndarray): timesteps
+        
+        Returns:
+            fig: matplotlib figure
+            ax: matplotlib axis
+        """
         fig, ax = plot_full_evolution(
             self.solves["original"],
             ts,
@@ -89,6 +112,9 @@ class MultiModeError(SystemError):
     def calculate_error(
         self, method: str, *args, num_samples=11, parse_output=lambda X: X, **kwargs
     ):
+        """
+        Overriden.
+        """
         # =====================
         def nonnegative(a):
             a[a < 0] = 0

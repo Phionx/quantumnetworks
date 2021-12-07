@@ -14,7 +14,15 @@ from matplotlib import animation
 
 
 class MultiModeSystem(SystemSolver):
+    """
+    SystemSolver for a quantum network comprisied of arbitrary 
+    coupling, nonlinearity, loss, and drives.
+    """
+
     def __init__(self, params: Dict[str, Any]) -> None:
+        """
+        Overriden.
+        """
         super().__init__(params)
         self._A = None
         self._B = None
@@ -22,6 +30,10 @@ class MultiModeSystem(SystemSolver):
             self.load_data(str(self.params["dir"]))
 
     def _param_validation(self):
+        """
+        Overriden.
+        """
+        super()._param_validation()
         self.params["dir"] = self.params.get("dir")
         self.params["drives"] = self.params.get("drives", {})
         if self.params["dir"] is not None:
@@ -65,6 +77,13 @@ class MultiModeSystem(SystemSolver):
     # Load Data
     # =================================
     def load_data(self, folder: str) -> None:
+        """
+        Alternative method to load parameter data from text files, 
+        instead of providing matrices in code. This is not preferred.
+        
+        Args:
+            folder (str): folder in which this parameter data is located
+        """
         # omegas (in 2pi * GHz)
         omegas_raw_data = self.load_file(folder + os.sep + "omegas.txt")
         num_modes = omegas_raw_data.shape[0]
@@ -89,6 +108,14 @@ class MultiModeSystem(SystemSolver):
         self.params["couplings_matrix"] = self.parse_couplings(couplings_raw_data)
 
     def parse_couplings(self, couplings_raw_data):
+        """
+        Helper method to parse a list of couplings into a coupling matrix.
+
+        Args:
+            couplings_raw_data (list): 
+                List of elements of the form [i,j, c] where i and j are ints that 
+                represent two modes and c (float) is the coupling between those two modes. 
+        """
         num_modes = self.params["num_modes"]
         couplings = np.zeros((num_modes, num_modes))
         for row in couplings_raw_data:
@@ -98,13 +125,32 @@ class MultiModeSystem(SystemSolver):
             couplings[j, i] = row[2]
         return couplings
 
-    def load_file(self, filename):
+    def load_file(self, filename: str):
+        """
+        Helper method to load a txt file storing parameter data.
+
+        Args:
+            filename (str): path to file
+        
+        Returns:
+            a (np.ndarray): array loaded from txt file
+        """
         a = np.loadtxt(filename, delimiter=",")
         if len(a.shape) == 1:
             return a.reshape((-1, a.size))
         return a
 
-    def load_raw_dict_to_list(self, raw_data, length):
+    def load_raw_dict_to_list(self, raw_data, length: int):
+        """
+        Helper method to load a txt file storing parameter data in two columns.
+
+        Args:
+            raw_data (list): list of the form [indx, value]
+            length (int): expected length of final list
+        
+        Returns:
+            data (list): final list of just values
+        """
         data = np.zeros(length)
         for row in raw_data:
             i = int(row[0])
@@ -115,6 +161,9 @@ class MultiModeSystem(SystemSolver):
     # =================================
     @property
     def A(self):
+        """
+        Property to store the linear matrix evolution part of f(x,u) = dx/dt.
+        """
         if self._A is None:
             num_modes = self.params["num_modes"]
             omegas = self.params["omegas"]
@@ -151,6 +200,9 @@ class MultiModeSystem(SystemSolver):
 
     @property
     def B(self):
+        """
+        Property to store the drive contribution matrix part of f(x,u) = dx/dt.
+        """
         if self._B is None:
             kappas = self.params["kappas"]
             num_modes = self.params["num_modes"]
@@ -167,13 +219,22 @@ class MultiModeSystem(SystemSolver):
         return self._B
 
     def default_drive(self, _t):
+        """
+        Default drive is no drive.
+        """
         return 0
 
     # Nonlinear
     # =================================
     def f_nl(self, x: np.ndarray):
         """
-        Nonlinear part of eq of motion
+        Nonlinear part of eq of motion.
+
+        Args:
+            x (np.ndarray): input state vector 
+
+        Returns:
+            non_linearity (np.ndarray): nonlinear function evaluation
         """
         Ks = self.params["kerrs"]
 
@@ -191,6 +252,12 @@ class MultiModeSystem(SystemSolver):
     def Jf_nl(self, x: np.ndarray):
         """
         Jacobian of nonlinear part of eq of motion
+
+        Args:
+            x (np.ndarray): input state vector 
+        
+        Returns:
+            nonlinear_Jf (np.ndarray): Jacobian
         """
         Ks = self.params["kerrs"]
 
@@ -212,10 +279,16 @@ class MultiModeSystem(SystemSolver):
     # =================================
 
     def eval_f(self, x: np.ndarray, u: np.ndarray) -> np.ndarray:
+        """
+        Overriden
+        """
         f = self.A.dot(x) + self.f_nl(x) + u
         return f
 
     def eval_u(self, t: float):
+        """
+        Overriden
+        """
         kappas = self.params["kappas"]
         drives = self.params["drives"]
 
@@ -232,11 +305,26 @@ class MultiModeSystem(SystemSolver):
         return u
 
     def eval_Jf(self, x: np.ndarray, u: np.ndarray) -> np.ndarray:
+        """
+        Overriden
+        """
         return self.A + self.Jf_nl(x)
 
     # Plotting
     # =================================
     def draw_network(self, **kwargs):
+        """
+        Multimode Quantum Network visualization method. 
+
+        Args:
+            **kwargs: keyword arguments for draw_graph
+        
+        Return:
+            fig: matplotlib figure
+            ax: matplotlib axis
+            pos: a dictionary with nodes as keys and positions as values.
+
+        """
         G = nx.Graph()
         for i in range(self.params["num_modes"]):
             G.add_node(i)
@@ -261,7 +349,26 @@ class MultiModeSystem(SystemSolver):
         save_animation=None,
         **kwargs,
     ):
+        """
+        Multimode quantum network animation method.
+        This generates and displays an animation.
 
+        Args:
+            xs (np.ndarray): state vector at all timesteps
+            ts (np.ndarray): timesteps
+            ax (optional): matplotlib axis
+            pos (optional[dict]): a dictionary with nodes as keys and positions as values.
+            num_frames (int): number of frames in animation
+            animation_time (float): length of animation in seconds
+            save_animation (optional[str]): 
+                if save_animation is not None, then the animation will be saved 
+                to a filename represented by the save_animation string
+            **kwargs: key word arguments used for network visualization
+        
+        Returns:
+            fig: matplotlib figure
+            ax: matplotlib axis
+        """
         # https://stackoverflow.com/questions/43646550/how-to-use-an-update-function-to-animate-a-networkx-graph-in-matplotlib-2-0-0
         if len(xs) % 2 != 0:
             raise ValueError("Please enter state data with an even number of rows.")

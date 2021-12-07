@@ -17,6 +17,10 @@ import numpy as np
 
 class MultiModeTest(unittest.TestCase):
     def test_forward_euler_default_A_in(self):
+        """
+        Compare forward euler evolution of a coupled two mode system 
+        with default (no) drive against scipy's odeint solver. 
+        """
         omegas = [2 * np.pi * 1, 2 * np.pi * 2]
         kappas = [2 * np.pi * 0.001, 2 * np.pi * 0.005]
         couplings = [[0, 1, 2 * np.pi * 0.002]]
@@ -41,7 +45,68 @@ class MultiModeTest(unittest.TestCase):
         sol = odeint(func, x_0, ts)
         self.assertTrue(np.allclose(X.T, sol, atol=0.002))
 
+    def test_trapezoidal_default_A_in(self):
+        """
+        Compare trapezoidal evolution of a coupled two mode system 
+        with default (no) drive against scipy's odeint solver. 
+        """
+        omegas = [2 * np.pi * 1, 2 * np.pi * 2]
+        kappas = [2 * np.pi * 0.001, 2 * np.pi * 0.005]
+        couplings = [[0, 1, 2 * np.pi * 0.002]]
+        gammas = [2 * np.pi * 0.002, 2 * np.pi * 0.002]
+        kerrs = [2 * np.pi * 0.01, 2 * np.pi * 0.01]
+        system = MultiModeSystem(
+            params={
+                "omegas": omegas,
+                "kappas": kappas,
+                "gammas": gammas,
+                "kerrs": kerrs,
+                "couplings": couplings,
+            }
+        )
+        x_0 = np.array([1, 0, 0, 1])
+        ts = np.linspace(0, 1, 1001)
+
+        X = system.trapezoidal(x_0, ts)
+
+        # solve using scipy.integrate.odeint
+        func = lambda y, t: system.eval_f(y, system.eval_u(t))
+        sol = odeint(func, x_0, ts)
+        self.assertTrue(np.allclose(X.T, sol, atol=0.0005))
+
+    def test_trapezoidal_dynamic_default_A_in(self):
+        """
+        Compare dynamic dt trapezoidal evolution of a coupled two mode system 
+        with default (no) drive against scipy's odeint solver. 
+        """
+        omegas = [2 * np.pi * 1, 2 * np.pi * 2]
+        kappas = [2 * np.pi * 0.001, 2 * np.pi * 0.005]
+        couplings = [[0, 1, 2 * np.pi * 0.002]]
+        gammas = [2 * np.pi * 0.002, 2 * np.pi * 0.002]
+        kerrs = [2 * np.pi * 0.01, 2 * np.pi * 0.01]
+        system = MultiModeSystem(
+            params={
+                "omegas": omegas,
+                "kappas": kappas,
+                "gammas": gammas,
+                "kerrs": kerrs,
+                "couplings": couplings,
+            }
+        )
+        x_0 = np.array([1, 0, 0, 1])
+        ts = np.linspace(0, 1, 1001)
+
+        X, ts = system.trapezoidal(x_0, ts, dynamic_dt=True)
+
+        # solve using scipy.integrate.odeint
+        func = lambda y, t: system.eval_f(y, system.eval_u(t))
+        sol = odeint(func, x_0, ts)
+        self.assertTrue(np.allclose(X.T, sol, atol=0.005))
+
     def test_analytic_vs_numerical_Jf(self):
+        """
+        Compare analytic vs numerical Jacobian.
+        """
         omegas = [2 * np.pi * 1, 2 * np.pi * 2]
         kappas = [2 * np.pi * 0.001, 2 * np.pi * 0.005]
         gammas = [2 * np.pi * 0.002, 2 * np.pi * 0.002]
@@ -64,6 +129,10 @@ class MultiModeTest(unittest.TestCase):
         self.assertTrue(np.allclose(Jf_analytic, Jf_numeric))
 
     def test_against_double_mode(self):
+        """
+        Compare forward euler evolution of a coupled two mode system 
+        against double mode code.
+        """
         omegas = [2 * np.pi * 1, 2 * np.pi * 2]
         kappas = [2 * np.pi * 0.001, 2 * np.pi * 0.005]
         gammas = [2 * np.pi * 0.002, 2 * np.pi * 0.002]
@@ -101,6 +170,10 @@ class MultiModeTest(unittest.TestCase):
         self.assertTrue(np.array_equal(system.B, system_double.B))
 
     def test_against_single_mode(self):
+        """
+        Compare forward euler evolution of a single mode system 
+        against single mode code.
+        """
         omegas = [2 * np.pi * 1]
         kappas = [2 * np.pi * 0.001]
         gammas = [2 * np.pi * 0.002]
@@ -131,6 +204,10 @@ class MultiModeTest(unittest.TestCase):
         self.assertTrue(np.array_equal(system.B, system_double.B))
 
     def test_linearization(self):
+        """
+        Compare forward euler evolution of linearized system dynamics of a coupled three mode system, 
+        against full nonlinear dynamics (at early times).
+        """
         omegas = [2 * np.pi * 1, 2 * np.pi * 2, 2 * np.pi * 1]
         kappas = [2 * np.pi * 0.001, 2 * np.pi * 0.005, 2 * np.pi * 0.001]
         gammas = [2 * np.pi * 0.002, 2 * np.pi * 0.002, 2 * np.pi * 0.002]

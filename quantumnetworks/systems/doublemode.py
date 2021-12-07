@@ -26,6 +26,7 @@ class DoubleModeSystem(SystemSolver):
         self.B_in = B_in if B_in else lambda t: 0
 
     def _param_validation(self):
+        super()._param_validation()
         if "omega_a" not in self.params:
             self.params["omega_a"] = 2 * np.pi * 1  # 2pi * GHz
         if "omega_b" not in self.params:

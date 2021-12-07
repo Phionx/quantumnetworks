@@ -11,7 +11,25 @@ from IPython.display import HTML, display
 import networkx as nx
 
 
-def plot_evolution(x, ts, x_min=None, x_max=None, fig=None, ax=None, **kwargs):
+def plot_evolution(
+    x: np.ndarray, ts: np.ndarray, x_min=None, x_max=None, fig=None, ax=None, **kwargs
+):
+    """
+    Plot evolution of single dimension of a state vector, optionally add error bars.
+
+    Args:
+        x (np.ndarray): signle dimension of a state vector over time
+        ts (np.ndarray): timesteps
+        x_min (optional[np.ndarray]): error bar minimum on x
+        x_max (optional[np.ndarray]): error bar maximum on x
+        fig (optional): matplotlib figure
+        ax (optional): matplotlib axis
+        **kwargs: optional keyword arguments used for plotting
+
+    Returns:
+        fig: matplotlib figure
+        ax: matplotlib axis
+    """
     fig = fig if fig is not None else plt.figure(figsize=(4, 3), dpi=200)
     ax = ax if ax is not None else fig.subplots()
     if x_min is not None and x_max is not None:
@@ -24,8 +42,32 @@ def plot_evolution(x, ts, x_min=None, x_max=None, fig=None, ax=None, **kwargs):
 
 
 def plot_full_evolution(
-    xs, ts, xs_min=None, xs_max=None, labels=None, fig=None, ax=None, **kwargs
+    xs: np.ndarray,
+    ts: np.ndarray,
+    xs_min=None,
+    xs_max=None,
+    labels=None,
+    fig=None,
+    ax=None,
+    **kwargs,
 ):
+    """
+    Plot evolution of multiple dimensions of a state vector, optionally add error bars.
+
+    Args:
+        xs (np.ndarray): multiple dimensions of a state vector over time
+        ts (np.ndarray): timesteps
+        xs_min (optional[np.ndarray]): error bars minimum on xs
+        xs_max (optional[np.ndarray]): error bars maximum on xs
+        labels (optional[list]): list of labels for each dimension
+        fig (optional): matplotlib figure
+        ax (optional): matplotlib axis
+        **kwargs: optional keyword arguments used for plotting
+
+    Returns:
+        fig: matplotlib figure
+        ax: matplotlib axis
+    """
     fig = fig if fig is not None else plt.figure(figsize=(4, 3), dpi=200)
     ax = ax if ax is not None else fig.subplots()
     for i, x in enumerate(xs):
@@ -43,15 +85,28 @@ def plot_full_evolution(
     return fig, ax
 
 
-def plot_evolution_phase_space(
-    X, fig=None, ax=None, use_arrows=True, arrow_width=0.001, **kwargs
-):
+def plot_evolution_phase_space(X, fig=None, ax=None, use_arrows=True, **kwargs):
+    """
+    Plot evolution of single quantum network mode in phase space (q/p representation).
+
+    Args:
+        X (np.ndarray): q/p coordinates of a single quantum network mode over time
+        fig (optional): matplotlib figure
+        ax (optional): matplotlib axis
+        use_arrows (bool): if true, use arrows on trace representing evolution
+        **kwargs: other optional keyword arguments used for plotting
+    
+    Returns:
+        fig: matplotlib figure
+        ax: matplotlib axis
+    """
     fig = fig if fig is not None else plt.figure(figsize=(4, 4), dpi=200)
     ax = ax if ax is not None else fig.subplots()
     q = X[0, :]
     p = X[1, :]
     ls = kwargs.pop("ls", "--")
     lw = kwargs.pop("lw", 0.5)
+    arrow_width = kwargs.pop("arrow_width", 0.001)
     ax.plot(q, p, ls=ls, lw=lw, **kwargs)
     if use_arrows:
         insert_arrows(
@@ -86,6 +141,18 @@ def plot_evolution_phase_space(
 
 
 def plot_full_evolution_phase_space(xs, **kwargs):
+    """
+    Plot evolution of multiple quantum network modes in phase space (q/p representation).
+
+    Args:
+        xs (np.ndarray): q/p coordinates of a multiple quantum network modes over time
+        **kwargs: 
+            optional keyword arguments used for plotting with self.plot_evolution_phase_space
+    
+    Returns:
+        fig: matplotlib figure
+        ax: matplotlib axis
+    """
     num_modes = len(xs) // 2
     fig, axs = plt.subplots(
         1, num_modes, figsize=(4 * num_modes, 4), dpi=200, squeeze=False
@@ -99,6 +166,18 @@ def plot_full_evolution_phase_space(xs, **kwargs):
 
 
 def insert_arrows(x, y, ax, num_arrows=10, **kwargs):
+    """
+    Helper functon to add arrows on a plot of y vs. x.
+
+    Args:
+        x (np.ndarray): x coordinates
+        y (np.ndarray): x coordinates
+        num_arrows (int): number of arrows desired
+        **kwargs: keyword arguments sent to ax.arrow
+    
+    Returns:
+        ax: matplotlib axis
+    """
     N = len(x)
     for i in range(0, N, N // num_arrows + 1):
         x_val = x[i]
@@ -120,6 +199,27 @@ def animate_evolution(
     save_animation=False,
     **kwargs,
 ):
+    """
+    Animate phase space evolution of multiple quantum network modes.
+    Both generate and display this animation.
+
+    Args:
+        xs (np.ndarray): multiple dimensions of a state vector over time
+        ts (np.ndarray): timesteps
+        labels (optional[list]): list of labels for each q/p dimension
+        num_frames (int): number of frames in animation
+        animation_time (float): length of animation in seconds
+        xlabel (str): default xlabel
+        xlabel (str): default ylabel
+        save_animation (optional[str]): 
+                if save_animation is not None, then the animation will be saved 
+                to a filename represented by the save_animation string
+        **kwargs: optional keyword arguments used for animation
+        
+    Returns:
+        fig: matplotlib figure
+        axs: matplotlib axes
+    """
     if len(xs) % 2 != 0:
         raise ValueError("Please enter state data with an even number of rows.")
 
@@ -178,7 +278,10 @@ def animate_evolution(
     )
     fig.tight_layout()
     if save_animation:
-        anim.save("animation.gif", writer="pillow", fps=60)
+        animation_title = (
+            save_animation if isinstance(save_animation, str) else "animation.gif"
+        )
+        anim.save(animation_title, writer="pillow", fps=60)
     html = HTML(anim.to_jshtml())
     display(html)
     plt.close()
@@ -198,12 +301,16 @@ def draw_graph(
 
     Args:
         graph (rx.PyGraph): graph to be plotted
-        dpi (int): dpi used for Figure. Defaults to dynamically sized value based on node count.
-        node_size (int): size of node used for `mpl_draw`. Defaults to dynamically sized value based on node count.
-        font_size (float): font size used for `mpl_draw`. Defaults to dynamically sized value based on node count.
+        ax (optional): matplotlib axis
+        pos (optional[dict]): a dictionary with nodes as keys and positions as values.
+        with_node_labels (bool): if true, then plot with node labels
+        with_edge_labels (bool): if true, then plot with edge (coupling) labels
+        **kwargs: other key word arguments used to modify the network graph visualization
 
     Returns:
-        (figure, axes): A matplotlib Figure and Axes object
+        fig: matplotlib figure
+        ax: matplotlib axis
+        pos: a dictionary with nodes as keys and positions as values.
     """
     # Figure
     dpi = kwargs.pop("dpi", 200)

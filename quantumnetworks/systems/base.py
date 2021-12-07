@@ -7,28 +7,84 @@ import numpy as np
 
 
 class SystemSolver(metaclass=ABCMeta):
+    """
+    Base class with common tooling and ODE solvers.
+    """
+
     def __init__(self, params: Dict[str, Any]) -> None:
+        """
+        Initialize SystemSolver.
+
+        Args:
+            params (dict):
+                key (str): parameter description
+                value (Any): float, list, anything really
+        
+        """
         self.params = params.copy()
         self._param_validation()
 
     @abstractmethod
     def _param_validation(self):
+        """
+        Parameter defaults and validation.
+        """
         self.params["q"] = self.params.get("q", None)
         pass
 
     @abstractmethod
     def eval_f(self, x: np.ndarray, u: np.ndarray) -> np.ndarray:
+        """
+        Evaluate dx/dt = f(x(t), u(t))
+
+        Args:
+            x (np.ndarray): state
+            u (np.ndarray): drive vector
+
+        Returns:
+            f(x,u)
+        """
         pass
 
     @abstractmethod
     def eval_u(self, t: float) -> np.ndarray:
+        """
+        Evaluate u(t).
+
+        Args:
+            t (float): time
+        
+        Returns:
+            u(t) (np.ndarray)
+        """
         pass
 
     @abstractmethod
     def eval_Jf(self, x: np.ndarray, u: np.ndarray) -> np.ndarray:
+        """
+        Evaluate Jacobian f at (x,u).
+
+        Args:
+            x (np.ndarray): input state vector
+            u (np.ndarray): input drive vector
+        
+        Returns:
+            Jf(x,u) (np.ndarray): matrix
+        """
         pass
 
     def eval_linear_matrices(self, x0: np.ndarray, u0: np.ndarray):
+        """
+        Evaluate matrices needed to calculate linearized f at bias point (x0, u0).
+
+        Args:
+            x0 (np.ndarray): state vector bias point
+            u0 (np.ndarray): drive vector bias point
+        
+        Returns:
+            A (np.ndarray): state vector evolution matrix at zero drive
+            B (np.ndarray): drive vector contribution matrix
+        """
         if np.isscalar(u0) and u0 == 0:
             u0 = np.zeros_like(x0)
 
@@ -45,15 +101,49 @@ class SystemSolver(metaclass=ABCMeta):
     def eval_f_linear(
         self, x: np.ndarray, u: np.ndarray, A: np.ndarray, B: np.ndarray
     ) -> np.ndarray:
+        """
+        Evaluation of f(x,u) linearized using matrices A, B, calculated from self.eval_linear_matrices.
+
+        Args:
+            x (np.ndarray): input state vector
+            u (np.ndarray): input drive vector
+            A (np.ndarray): state vector evolution matrix at zero drive
+            B (np.ndarray): drive vector contribution matrix
+        """
         u_full = np.append(1, u)
         return A.dot(x) + B.dot(u_full)
 
     def eval_Jf_numerical(
         self, x: np.ndarray, u: np.ndarray, dx: float = 1e-7
     ) -> np.ndarray:
+        """
+        Evaluate Jacobian f at (x,u) using a finite difference method.
+
+        Args:
+            x (np.ndarray): input state vector
+            u (np.ndarray): input drive vector
+            dx (float): finite difference 
+
+        Returns:
+            Jf(x,u) (np.ndarray): matrix
+        """
         return self.eval_numerical_gradient(self.eval_f, x, u, dx=dx,)
 
     def eval_numerical_gradient(self, eval_f, x: np.ndarray, *args, **kwargs):
+        """
+        General numerical gradient calculator. 
+
+        Args:
+            eval_f (function pointer): f evaluation function
+            x (np.ndarray): input state vector
+            *args: other arguments needed to evaluate f
+            *kwargs: 
+                other keyword arguments needed to evaluate f
+                    also includes finite difference dx (float)
+
+        Returns:
+            Jf(x,...) (np.ndarray): Jacobian
+        """
         x = x.astype(float)
         dx = kwargs.pop("dx", 1e-7)
         f = eval_f(x, *args, **kwargs)
@@ -68,6 +158,16 @@ class SystemSolver(metaclass=ABCMeta):
         return J
 
     def forward_euler(self, x_start: np.ndarray, ts: np.ndarray):
+        """
+        Forward euler ODE solver.
+
+        Args:
+            x_start (np.ndarray): start state vector
+            ts (np.ndarray): timesteps
+        
+        Returns:
+            X (np.ndarray): state vector at all timesteps
+        """
         x_start = x_start.astype(float)
         X = 1.0 * np.zeros((x_start.size, ts.size))
         X[:, 0] = x_start
@@ -81,6 +181,18 @@ class SystemSolver(metaclass=ABCMeta):
     def forward_euler_linear(
         self, x_start: np.ndarray, ts: np.ndarray, x0: np.ndarray, u0: np.ndarray
     ):
+        """
+        Forward euler ODE solver of function linearized at x0 and u0.
+
+        Args:
+            x_start (np.ndarray): start state vector
+            ts (np.ndarray): timesteps
+            x0 (np.ndarray): state vector bias point
+            u0 (np.ndarray): drive vector bias point
+        
+        Returns:
+            X (np.ndarray): state vector at all timesteps
+        """
         A, B = self.eval_linear_matrices(x0, u0)
         q = self.params["q"]
         if q is not None:
@@ -116,6 +228,21 @@ class SystemSolver(metaclass=ABCMeta):
     def trapezoidal_dynamic(
         self, x_start: np.ndarray, ts: np.ndarray, return_last=False, **kwargs
     ):
+        """
+        Trapezoidal ODE solver with dynamic dt.
+
+        Args:
+            x_start (np.ndarray): start state vector
+            ts (np.ndarray): timesteps
+            return_last (bool): return only the last timestep state vector
+            **kwargs: additional keyword arguments that help determine when to change dt
+
+        Returns:
+            X (np.ndarray): 
+                state vector at all times
+                (occasionally, we will only return the last state vector when return_last=True)
+            ts_dynamic (np.ndarray): dynamic dt timesteps
+        """
 
         # parameters
         factor = kwargs.pop("factor", 2)
@@ -185,6 +312,23 @@ class SystemSolver(metaclass=ABCMeta):
         dynamic_dt=False,
         **kwargs
     ):
+        """
+        Trapezoidal ODE solver.
+
+        Args:
+            x_start (np.ndarray): start state vector
+            ts (np.ndarray): timesteps
+            return_last (bool): return only the last timestep state vector
+            dynamic_dt (bool): if true, use self.trapezoidal_dynamic
+            **kwargs: additional keyword arguments to pass to self.trapezoidal_dynamic
+
+        Returns:
+            X (np.ndarray): 
+                state vector at all times
+                (occasionally, we will only return the last state vector when return_last=True)
+            ts_dynamic (np.ndarray): returns dynamic dt timesteps if self.trapezoidal_dynamic is used
+
+        """
         if dynamic_dt:
             return self.trapezoidal_dynamic(x_start, ts, return_last, **kwargs)
 
@@ -215,12 +359,36 @@ class SystemSolver(metaclass=ABCMeta):
         return X
 
     def eval_f_shooting_newton(self, x: np.ndarray, p: Dict[str, np.ndarray]):
+        """
+        Evaluation function used for shooting newton.
+
+        Args:
+            x (np.ndarray): input state vector
+            p (dict): parameters needed to evaluate trapezoidal
+                key (str): parameter name
+                val (np.ndarray): parameter value
+        
+        Returns:
+            Trapezoidal(x,ts) - x
+        """
         ts = p["ts"]
         return self.trapezoidal(x, ts, return_last=True) - x
 
     def eval_Jf_shooting_newton_numerical(
         self, x: np.ndarray, p: Dict[str, np.ndarray]
     ):
+        """
+        Jacobian of self.eval_f_shooting_newton
+
+        Args:
+            x (np.ndarray): input state vector
+            p (dict): parameters needed to evaluate trapezoidal
+                key (str): parameter name
+                val (np.ndarray): parameter value
+        
+        Returns:
+            Jf (np.ndarray): Jacobian
+        """
         ts = p["ts"]
         Jf = self.eval_numerical_gradient(
             self.trapezoidal, x, ts, return_last=True
@@ -228,6 +396,20 @@ class SystemSolver(metaclass=ABCMeta):
         return Jf
 
     def eval_solve_shooting_newton(self, x0: np.ndarray, ts: np.ndarray, **kwargs):
+        """
+        Solve for the zero of self.eval_f_shooting_newton.
+        This is used to find the system's periodic steady state 
+        with period T, as specified by ts.
+
+        Args:
+            x0 (np.ndarray): initial guess state vector
+            ts (np.ndarray): time steps
+            **kwargs: other keyword arguments used to modify newton method
+
+        Returns:
+            x (np.ndarray): solution for the zero of self.eval_f_shooting_newton
+
+        """
         p = {"ts": ts}
         return self.newton(
             x0,
@@ -240,6 +422,20 @@ class SystemSolver(metaclass=ABCMeta):
     def eval_f_trapezoidal(
         self, x_next: np.ndarray, p: Dict[str, np.ndarray],
     ):
+        """
+        Trapezoidal evaluation function.
+        The x_next that leads to newton_f = 0 is precisely the state vector 
+        at the next timestep, as determined by the Trapezoidal method. 
+
+        Args:
+            x_next (np.ndarray): state vector guess for the next time step
+            p (dict): parameters needed to evaluate this function
+                key (str): parameter name
+                val (np.nadarray): parameter values
+        
+        Returns:
+            newton_f (np.ndarray): output of function which we wish to zero
+        """
         dt = p["dt"]
         f_curr = p["f"]
         x_curr = p["x"]
@@ -251,6 +447,19 @@ class SystemSolver(metaclass=ABCMeta):
     def eval_Jf_trapezoidal(
         self, x_next: np.ndarray, p: Dict[str, np.ndarray],
     ):
+        """
+        Analytic Jacobian of self.eval_f_trapezoidal.
+
+        Args:
+            x_next (np.ndarray): state vector guess for the next time step
+            p (dict): parameters needed to evaluate this function
+                key (str): parameter name
+                val (np.nadarray): parameter values
+        
+        Return:
+            Jf (np.ndarray): Jacobian 
+
+        """
         dt = p["dt"]
         u_next = p["u_next"]
 

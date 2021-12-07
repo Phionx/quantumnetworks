@@ -24,6 +24,7 @@ class SingleModeSystem(SystemSolver):
         self.A_in = A_in if A_in else lambda t: 0
 
     def _param_validation(self):
+        super()._param_validation()
         if "omega_a" not in self.params:
             self.params["omega_a"] = 2 * np.pi * 1  # 2pi * GHz
         if "kappa_a" not in self.params:
