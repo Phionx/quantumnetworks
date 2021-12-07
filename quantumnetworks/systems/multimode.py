@@ -373,6 +373,8 @@ class MultiModeSystem(SystemSolver):
         if len(xs) % 2 != 0:
             raise ValueError("Please enter state data with an even number of rows.")
 
+        title_fontsize = kwargs.pop("title_fontsize", 6)
+
         num_modes = len(xs) // 2
         num_points = len(ts)
 
@@ -402,7 +404,7 @@ class MultiModeSystem(SystemSolver):
                 alpha = (q ** 2 + p ** 2) / max_amp
                 node_color.append((1, 0, 0, alpha))
             self.draw_network(ax=ax, node_color=node_color, pos=pos, **kwargs)
-            ax.set_title(f"t = {ts[indx]:.2f} ns")
+            ax.set_title(f"t = {ts[indx]:.2f} ns", fontsize=title_fontsize)
             # ax.margins(0.05)
             ax.spines["top"].set_visible(False)
             ax.spines["right"].set_visible(False)
