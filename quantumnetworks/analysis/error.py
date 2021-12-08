@@ -84,7 +84,7 @@ class SystemError(metaclass=ABCMeta):
         solves_with_error = np.array(self.solves["with_error"])
         self.solves["std"] = np.std(solves_with_error, axis=0)
 
-    def plot(self, ts, **kwargs):
+    def plot(self, ts, indxs=None, **kwargs):
         """
         Plot state evolution along with error bars.
         Wrapper on plot_full_evolution.
@@ -96,12 +96,18 @@ class SystemError(metaclass=ABCMeta):
             fig: matplotlib figure
             ax: matplotlib axis
         """
+        original = (
+            self.solves["original"] if indxs is None else self.solves["original"][indxs]
+        )
+
+        xs_min = self.solves["original"] - self.solves["std"]
+        xs_min = xs_min if indxs is None else xs_min[indxs]
+
+        xs_max = self.solves["original"] + self.solves["std"]
+        xs_max = xs_max if indxs is None else xs_max[indxs]
+
         fig, ax = plot_full_evolution(
-            self.solves["original"],
-            ts,
-            xs_min=(self.solves["original"] - self.solves["std"]),
-            xs_max=(self.solves["original"] + self.solves["std"]),
-            **kwargs
+            original, ts, xs_min=xs_min, xs_max=xs_max, **kwargs
         )
         ax.legend()
         fig.tight_layout()

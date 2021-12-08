@@ -30,8 +30,10 @@ def plot_evolution(
         fig: matplotlib figure
         ax: matplotlib axis
     """
-    fig = fig if fig is not None else plt.figure(figsize=(4, 3), dpi=200)
-    ax = ax if ax is not None else fig.subplots()
+    if ax is None:
+        fig, ax = plt.subplots(1, figsize=(4, 3), dpi=200)
+    fig = ax.get_figure()
+
     if x_min is not None and x_max is not None:
         ax.fill_between(ts, x_min, x_max, alpha=0.1)
     ax.plot(ts, x, **kwargs)
@@ -68,8 +70,11 @@ def plot_full_evolution(
         fig: matplotlib figure
         ax: matplotlib axis
     """
-    fig = fig if fig is not None else plt.figure(figsize=(4, 3), dpi=200)
-    ax = ax if ax is not None else fig.subplots()
+
+    if ax is None:
+        fig, ax = plt.subplots(1, figsize=(4, 3), dpi=200)
+    fig = ax.get_figure()
+
     for i, x in enumerate(xs):
         x_min = xs_min[i] if xs_min is not None else None
         x_max = xs_max[i] if xs_max is not None else None
@@ -100,8 +105,11 @@ def plot_evolution_phase_space(X, fig=None, ax=None, use_arrows=True, **kwargs):
         fig: matplotlib figure
         ax: matplotlib axis
     """
-    fig = fig if fig is not None else plt.figure(figsize=(4, 4), dpi=200)
-    ax = ax if ax is not None else fig.subplots()
+
+    if ax is None:
+        fig, ax = plt.subplots(1, figsize=(4, 4), dpi=200)
+    fig = ax.get_figure()
+
     q = X[0, :]
     p = X[1, :]
     ls = kwargs.pop("ls", "--")
@@ -135,8 +143,6 @@ def plot_evolution_phase_space(X, fig=None, ax=None, use_arrows=True, **kwargs):
     ax.set_ylabel("p")
     ax.set_title(f"Phase Space Evolution")
     ax.set_aspect("equal", adjustable="box")
-    fig.tight_layout()
-    ax.grid()
     return fig, ax
 
 
@@ -188,7 +194,7 @@ def insert_arrows(x, y, ax, num_arrows=10, **kwargs):
     return ax
 
 
-def animate_evolution(
+def animate_evolution_old(
     xs,
     ts,
     labels=None,
@@ -196,6 +202,7 @@ def animate_evolution(
     animation_time=5,
     xlabel="q",
     ylabel="p",
+    is_traced=True,
     save_animation=False,
     **kwargs,
 ):
@@ -211,6 +218,7 @@ def animate_evolution(
         animation_time (float): length of animation in seconds
         xlabel (str): default xlabel
         xlabel (str): default ylabel
+        is_traced (bool): whether or not to draw trace of path in q/p space
         save_animation (optional[str]): 
                 if save_animation is not None, then the animation will be saved 
                 to a filename represented by the save_animation string
@@ -226,7 +234,9 @@ def animate_evolution(
     num_modes = len(xs) // 2
     num_points = len(ts)
 
-    fig, axs = plt.subplots(1, num_modes, figsize=(4 * num_modes, 4), squeeze=False)
+    fig, axs = plt.subplots(
+        1, num_modes, figsize=(4 * num_modes, 4), dpi=100, squeeze=False
+    )
     axs = axs[0]
 
     lines = []
@@ -241,8 +251,10 @@ def animate_evolution(
         max_p = max(np.max(p) * 1.1, np.max(p) * 0.9)
 
         axs[i].set_aspect("equal", adjustable="box")
-        axs[i].set_xlim([min_q, max_q])
-        axs[i].set_ylim([min_p, max_p])
+        min_tot = min(min_q, min_p)
+        max_tot = max(max_q, max_p)
+        axs[i].set_xlim([min_tot, max_tot])
+        axs[i].set_ylim([min_tot, max_tot])
 
         lines.append(axs[i].plot([], [], "o", markersize=10, **kwargs)[0])
         if labels:
@@ -265,6 +277,10 @@ def animate_evolution(
             p_val = xs[2 * lnum + 1, i]
             line.set_data([q_val], [p_val])
             axs[lnum].set_title(f"t = {t_val:.2f}")
+            if is_traced:
+                plot_evolution_phase_space(
+                    xs[2 * lnum : 2 * lnum + 2, : i + 1], ax=axs[lnum], use_arrows=False
+                )
         return lines
 
     interval = animation_time * 1000 // num_frames
@@ -278,6 +294,115 @@ def animate_evolution(
     )
     fig.tight_layout()
     if save_animation:
+        animation_title = (
+            save_animation if isinstance(save_animation, str) else "animation.gif"
+        )
+        anim.save(animation_title, writer="pillow", fps=60)
+    html = HTML(anim.to_jshtml())
+    display(html)
+    plt.close()
+    return fig, axs
+
+
+def animate_evolution(
+    xs,
+    ts,
+    labels=None,
+    num_frames=200,
+    animation_time=5,
+    xlabel="q",
+    ylabel="p",
+    is_traced=True,
+    save_animation=None,
+    **kwargs,
+):
+    """
+    Animate phase space evolution of multiple quantum network modes.
+    Both generate and display this animation.
+
+    Args:
+        xs (np.ndarray): multiple dimensions of a state vector over time
+        ts (np.ndarray): timesteps
+        labels (optional[list]): list of labels for each q/p dimension
+        num_frames (int): number of frames in animation
+        animation_time (float): length of animation in seconds
+        xlabel (str): default xlabel
+        xlabel (str): default ylabel
+        is_traced (bool): whether or not to draw trace of path in q/p space
+        save_animation (optional[str]): 
+                if save_animation is not None, then the animation will be saved 
+                to a filename represented by the save_animation string
+        **kwargs: optional keyword arguments used for animation
+        
+    Returns:
+        fig: matplotlib figure
+        axs: matplotlib axes
+    """
+    if len(xs) % 2 != 0:
+        raise ValueError("Please enter state data with an even number of rows.")
+
+    num_modes = len(xs) // 2
+    num_points = len(ts)
+
+    fig, axs = plt.subplots(
+        1, num_modes, figsize=(4 * num_modes, 4), dpi=100, squeeze=False
+    )
+    axs = axs[0]
+
+    min_tot = []
+    max_tot = []
+    #  prepare axis
+    for i in range(num_modes):
+        q = xs[2 * i, :]
+        p = xs[2 * i + 1, :]
+
+        min_q = min(np.min(q) * 1.1, np.min(q) * 0.9)
+        max_q = max(np.max(q) * 1.1, np.max(q) * 0.9)
+        min_p = min(np.min(p) * 1.1, np.min(p) * 0.9)
+        max_p = max(np.max(p) * 1.1, np.max(p) * 0.9)
+
+        axs[i].set_aspect("equal", adjustable="box")
+        min_tot.append(min(min_q, min_p))
+        max_tot.append(max(max_q, max_p))
+        axs[i].set_xlim([min_tot[-1], max_tot[-1]])
+        axs[i].set_ylim([min_tot[-1], max_tot[-1]])
+
+        if labels:
+            xlabel = labels[2 * i]
+            ylabel = labels[2 * i + 1]
+        axs[i].set_xlabel(xlabel)
+        axs[i].set_ylabel(ylabel)
+
+    def animate(indx):
+        i = indx * num_points // num_frames
+        t_val = ts[i]
+
+        for ax_num, ax in enumerate(axs):
+            ax.clear()
+            ax.grid()
+
+            ax.set_xlim([min_tot[ax_num], max_tot[ax_num]])
+            ax.set_ylim([min_tot[ax_num], max_tot[ax_num]])
+
+            q_val = xs[2 * ax_num, i]
+            p_val = xs[2 * ax_num + 1, i]
+            ax.plot([q_val], [p_val], "o", markersize=10, **kwargs)
+            ax.set_title(f"t = {t_val:.2f}")
+            if is_traced:
+                plot_evolution_phase_space(
+                    xs[2 * ax_num : 2 * ax_num + 2, : i + 1],
+                    ax=axs[ax_num],
+                    use_arrows=False,
+                    color="blue",
+                )
+        fig.tight_layout()
+
+    interval = animation_time * 1000 // num_frames
+    anim = animation.FuncAnimation(
+        fig, animate, frames=num_frames, interval=interval, repeat=True
+    )
+
+    if save_animation is not None:
         animation_title = (
             save_animation if isinstance(save_animation, str) else "animation.gif"
         )
