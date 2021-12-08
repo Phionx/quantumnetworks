@@ -42,7 +42,7 @@ setup(
     extras_require=EXTRA_REQUIREMENTS,
     classifiers=[
         "Environment :: Console",
-        "License :: OSI Approved :: Apache Software License",
+        "License :: OSI Approved :: MIT License",
         "Intended Audience :: Developers",
         "Intended Audience :: Science/Research",
         "Operating System :: Microsoft :: Windows",
