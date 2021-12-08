@@ -54,14 +54,14 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Topic :: Scientific/Engineering",
     ],
-    keywords="quantum networks",
+    keywords="quantum networks communication computing",
     python_requires=">=3.6",
     project_urls={
         "Bug Tracker": "https://github.com/Phionx/quantumnetworks/issues",
         "Documentation": "https://github.com/Phionx/quantumnetworks",
         "Source Code": "https://github.com/Phionx/quantumnetworks",
-        "Demos": "https://github.com/Phionx/quantumnetworks/demos",
-        "Tests": "https://github.com/Phionx/quantumnetworks/tests",
+        "Demos": "https://github.com/Phionx/quantumnetworks/tree/master/demos",
+        "Tests": "https://github.com/Phionx/quantumnetworks/tree/master/tests",
     },
     include_package_data=True,
 )
