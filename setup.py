@@ -9,7 +9,6 @@ REQUIREMENTS = [
     "numpy",
     "scipy",
     "matplotlib>=3.3.0",
-    "retworkx>=0.10.0",
     "IPython",
     "networkx",
     "tqdm",
