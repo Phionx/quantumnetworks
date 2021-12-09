@@ -457,6 +457,12 @@ def draw_graph(
     )
     pos = nx.spring_layout(graph) if pos is None else pos
 
+    node_labels = None
+    if isinstance(with_node_labels, bool) and with_node_labels:
+        node_labels = {node: node for node in graph.nodes()}
+    elif with_node_labels:
+        node_labels = with_node_labels
+
     nx.draw_networkx(
         graph,
         pos,
@@ -466,7 +472,7 @@ def draw_graph(
         node_color=node_color,
         font_size=font_size,
         with_labels=with_node_labels,
-        labels={node: node for node in graph.nodes()} if with_node_labels else None,
+        labels=node_labels,
         **kwargs,
     )
 
