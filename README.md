@@ -6,7 +6,7 @@
 
 ---
 
-*Please checkout this [presentation](https://docs.google.com/presentation/d/1-2YzJWmRjBr4XqfV-qTjjIAvsZ6RQoBXQy5Cf2bfN64/edit?usp=sharing) for a quick overview of `quantumnetworks`!*
+*Please checkout this [presentation](https://docs.google.com/presentation/d/1-2YzJWmRjBr4XqfV-qTjjIAvsZ6RQoBXQy5Cf2bfN64/edit?usp=sharing) and [paper](https://drive.google.com/file/d/1Dz0B8llnb94KIqrA2uE9AOYonnJFUFdU/view?usp=sharing) for a quick overview of `quantumnetworks`!*
 ## Installation
 
 *Conda users, please make sure to `conda install pip` before running any pip installation if you want to install `quantumnetworks` into your conda environment.*
