@@ -19,7 +19,7 @@ class SystemSolver(metaclass=ABCMeta):
             params (dict):
                 key (str): parameter description
                 value (Any): float, list, anything really
-        
+
         """
         self.params = params.copy()
         self._param_validation()
@@ -53,7 +53,7 @@ class SystemSolver(metaclass=ABCMeta):
 
         Args:
             t (float): time
-        
+
         Returns:
             u(t) (np.ndarray)
         """
@@ -67,7 +67,7 @@ class SystemSolver(metaclass=ABCMeta):
         Args:
             x (np.ndarray): input state vector
             u (np.ndarray): input drive vector
-        
+
         Returns:
             Jf(x,u) (np.ndarray): matrix
         """
@@ -80,7 +80,7 @@ class SystemSolver(metaclass=ABCMeta):
         Args:
             x0 (np.ndarray): state vector bias point
             u0 (np.ndarray): drive vector bias point
-        
+
         Returns:
             A (np.ndarray): state vector evolution matrix at zero drive
             B (np.ndarray): drive vector contribution matrix
@@ -122,22 +122,27 @@ class SystemSolver(metaclass=ABCMeta):
         Args:
             x (np.ndarray): input state vector
             u (np.ndarray): input drive vector
-            dx (float): finite difference 
+            dx (float): finite difference
 
         Returns:
             Jf(x,u) (np.ndarray): matrix
         """
-        return self.eval_numerical_gradient(self.eval_f, x, u, dx=dx,)
+        return self.eval_numerical_gradient(
+            self.eval_f,
+            x,
+            u,
+            dx=dx,
+        )
 
     def eval_numerical_gradient(self, eval_f, x: np.ndarray, *args, **kwargs):
         """
-        General numerical gradient calculator. 
+        General numerical gradient calculator.
 
         Args:
             eval_f (function pointer): f evaluation function
             x (np.ndarray): input state vector
             *args: other arguments needed to evaluate f
-            *kwargs: 
+            *kwargs:
                 other keyword arguments needed to evaluate f
                     also includes finite difference dx (float)
 
@@ -164,7 +169,7 @@ class SystemSolver(metaclass=ABCMeta):
         Args:
             x_start (np.ndarray): start state vector
             ts (np.ndarray): timesteps
-        
+
         Returns:
             X (np.ndarray): state vector at all timesteps
         """
@@ -189,7 +194,7 @@ class SystemSolver(metaclass=ABCMeta):
             ts (np.ndarray): timesteps
             x0 (np.ndarray): state vector bias point
             u0 (np.ndarray): drive vector bias point
-        
+
         Returns:
             X (np.ndarray): state vector at all timesteps
         """
@@ -238,7 +243,7 @@ class SystemSolver(metaclass=ABCMeta):
             **kwargs: additional keyword arguments that help determine when to change dt
 
         Returns:
-            X (np.ndarray): 
+            X (np.ndarray):
                 state vector at all times
                 (occasionally, we will only return the last state vector when return_last=True)
             ts_dynamic (np.ndarray): dynamic dt timesteps
@@ -323,7 +328,7 @@ class SystemSolver(metaclass=ABCMeta):
             **kwargs: additional keyword arguments to pass to self.trapezoidal_dynamic
 
         Returns:
-            X (np.ndarray): 
+            X (np.ndarray):
                 state vector at all times
                 (occasionally, we will only return the last state vector when return_last=True)
             ts_dynamic (np.ndarray): returns dynamic dt timesteps if self.trapezoidal_dynamic is used
@@ -367,7 +372,7 @@ class SystemSolver(metaclass=ABCMeta):
             p (dict): parameters needed to evaluate trapezoidal
                 key (str): parameter name
                 val (np.ndarray): parameter value
-        
+
         Returns:
             Trapezoidal(x,ts) - x
         """
@@ -385,7 +390,7 @@ class SystemSolver(metaclass=ABCMeta):
             p (dict): parameters needed to evaluate trapezoidal
                 key (str): parameter name
                 val (np.ndarray): parameter value
-        
+
         Returns:
             Jf (np.ndarray): Jacobian
         """
@@ -398,7 +403,7 @@ class SystemSolver(metaclass=ABCMeta):
     def eval_solve_shooting_newton(self, x0: np.ndarray, ts: np.ndarray, **kwargs):
         """
         Solve for the zero of self.eval_f_shooting_newton.
-        This is used to find the system's periodic steady state 
+        This is used to find the system's periodic steady state
         with period T, as specified by ts.
 
         Args:
@@ -420,19 +425,21 @@ class SystemSolver(metaclass=ABCMeta):
         )[0]
 
     def eval_f_trapezoidal(
-        self, x_next: np.ndarray, p: Dict[str, np.ndarray],
+        self,
+        x_next: np.ndarray,
+        p: Dict[str, np.ndarray],
     ):
         """
         Trapezoidal evaluation function.
-        The x_next that leads to newton_f = 0 is precisely the state vector 
-        at the next timestep, as determined by the Trapezoidal method. 
+        The x_next that leads to newton_f = 0 is precisely the state vector
+        at the next timestep, as determined by the Trapezoidal method.
 
         Args:
             x_next (np.ndarray): state vector guess for the next time step
             p (dict): parameters needed to evaluate this function
                 key (str): parameter name
                 val (np.nadarray): parameter values
-        
+
         Returns:
             newton_f (np.ndarray): output of function which we wish to zero
         """
@@ -445,7 +452,9 @@ class SystemSolver(metaclass=ABCMeta):
         return newton_f
 
     def eval_Jf_trapezoidal(
-        self, x_next: np.ndarray, p: Dict[str, np.ndarray],
+        self,
+        x_next: np.ndarray,
+        p: Dict[str, np.ndarray],
     ):
         """
         Analytic Jacobian of self.eval_f_trapezoidal.
@@ -455,9 +464,9 @@ class SystemSolver(metaclass=ABCMeta):
             p (dict): parameters needed to evaluate this function
                 key (str): parameter name
                 val (np.nadarray): parameter values
-        
+
         Return:
-            Jf (np.ndarray): Jacobian 
+            Jf (np.ndarray): Jacobian
 
         """
         dt = p["dt"]

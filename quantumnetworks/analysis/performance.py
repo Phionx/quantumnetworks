@@ -112,6 +112,7 @@ class SolverOptimizer:
         dts,
         *args,
         solver_method="forward_euler",
+        calc_runtime=True,
         time_iters=10,
         metric=None,
         **kwargs
@@ -145,19 +146,31 @@ class SolverOptimizer:
             num_steps = num_steps_gen(dt)
             ts = np.linspace(self.t_i, self.t_f, num_steps + 1)
 
-            t0 = time.time()
-            for j in range(time_iters):
-                X = getattr(self.system, solver_method)(self.x_0, ts, *args, **kwargs)
-            t1 = time.time()
-            runtimes.append((t1 - t0) / time_iters)
-
-            if X.shape[1] < X_r.shape[1]:
-                factor = int((X_r.shape[1] - 1) / (X.shape[1] - 1))
-                diff = metric(X, X_r, factor)
+            if calc_runtime:
+                t0 = time.time()
+                for j in range(time_iters):
+                    X = getattr(self.system, solver_method)(
+                        self.x_0, ts, *args, **kwargs
+                    )
+                t1 = time.time()
+                runtimes.append((t1 - t0) / time_iters)
             else:
-                factor = int((X.shape[1] - 1) / (X_r.shape[1] - 1))
-                diff = metric(X_r, X, factor)
-            dchi_2s.append(diff)
+                X = getattr(self.system, solver_method)(self.x_0, ts, *args, **kwargs)
+
+            # some solvers return tuple (X, ts); in this case, take only X
+            if type(X) is tuple:
+                X = X[0]
+
+            try:
+                if X.shape[1] < X_r.shape[1]:
+                    factor = int((X_r.shape[1] - 1) / (X.shape[1] - 1))
+                    diff = metric(X, X_r, factor)
+                else:
+                    factor = int((X.shape[1] - 1) / (X_r.shape[1] - 1))
+                    diff = metric(X_r, X, factor)
+                dchi_2s.append(diff)
+            except ValueError:
+                return X, X_r
 
         return np.array(dchi_2s), np.array(runtimes)
 
@@ -173,5 +186,6 @@ class SolverOptimizer:
         Returns:
             ||a-b||_2/||a||
         """
-        b = b[:, 0::factor]
+        b = b[:, 0::factor]  # stretch b to roughly the same size as a
+        b = b[:, 0 : a.shape[1]]  # truncate to length of a
         return np.linalg.norm(a - b, 2) / np.linalg.norm(a, 2)
