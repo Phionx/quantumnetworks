@@ -6,12 +6,13 @@ import time
 
 from quantumnetworks.systems.base import SystemSolver
 from tqdm import tqdm
+import time
 import numpy as np
 
 
 def time_func(func, *args, n=100, **kwargs):
     """
-    Help method to time a function. 
+    Help method to time a function.
     Times the function n times and takes the average of the top 10% times.
 
     Args:
@@ -63,7 +64,7 @@ class SolverOptimizer:
             dts (optional[list]): optional list of dts to check
             threshold (float): a change in solutions below this threshold will result in convergence
             metric (optiona[function]): if provided, this will override the change metric
-        
+
         Return:
             dchi_2s (np.ndarray): change metric
             dts_calc (np.ndarray): dts calculated
@@ -106,7 +107,15 @@ class SolverOptimizer:
         return np.array(dchi_2s), np.array(dts_calc)
 
     def sweep_dt_err(
-        self, X_r, dts, *args, solver_method="forward_euler", metric=None, **kwargs
+        self,
+        X_r,
+        dts,
+        *args,
+        solver_method="forward_euler",
+        calc_runtime=True,
+        time_iters=10,
+        metric=None,
+        **kwargs
     ):
         """
         Sweep dt and measure error with respect to a reference solution.
@@ -115,12 +124,13 @@ class SolverOptimizer:
             X_r (np.ndarray): reference solution
             dts (list): list of dt to sweep over
             *args: optional arguments to solver_method
-            solver_method (str): 
+            solver_method (str):
                 solver_method to use to solve for system dynamics at different dt
                 e.g. "forward_euler" or "trapezoidal"
+            time_iters (int): number of iterations for average runtime calculation
             metric (optional): optional metric to override default
             **kwargs: optional keyword arguments to solver_method
-        
+
         Returns:
             dchi_2s (np.ndarray): error values
         """
@@ -128,21 +138,41 @@ class SolverOptimizer:
         num_steps_gen = lambda dt: int(np.ceil(total_t / dt))
 
         dchi_2s = []
+        runtimes = []
 
         metric = self.diff if metric is None else metric
 
         for dt in tqdm(dts):
             num_steps = num_steps_gen(dt)
             ts = np.linspace(self.t_i, self.t_f, num_steps + 1)
-            X = getattr(self.system, solver_method)(self.x_0, ts, *args, **kwargs)
-            if X.shape[1] < X_r.shape[1]:
-                factor = int((X_r.shape[1] - 1) / (X.shape[1] - 1))
-                diff = metric(X, X_r, factor)
+
+            if calc_runtime:
+                t0 = time.time()
+                for j in range(time_iters):
+                    X = getattr(self.system, solver_method)(
+                        self.x_0, ts, *args, **kwargs
+                    )
+                t1 = time.time()
+                runtimes.append((t1 - t0) / time_iters)
             else:
-                factor = int((X.shape[1] - 1) / (X_r.shape[1] - 1))
-                diff = metric(X_r, X, factor)
-            dchi_2s.append(diff)
-        return np.array(dchi_2s)
+                X = getattr(self.system, solver_method)(self.x_0, ts, *args, **kwargs)
+
+            # some solvers return tuple (X, ts); in this case, take only X
+            if type(X) is tuple:
+                X = X[0]
+
+            try:
+                if X.shape[1] < X_r.shape[1]:
+                    factor = int((X_r.shape[1] - 1) / (X.shape[1] - 1))
+                    diff = metric(X, X_r, factor)
+                else:
+                    factor = int((X.shape[1] - 1) / (X_r.shape[1] - 1))
+                    diff = metric(X_r, X, factor)
+                dchi_2s.append(diff)
+            except ValueError:
+                return X, X_r
+
+        return np.array(dchi_2s), np.array(runtimes)
 
     def diff(self, a, b, factor):
         """
@@ -151,10 +181,11 @@ class SolverOptimizer:
         Args:
             a (np.array): smaller array
             b (np.array): larger array by some factor
-            factor (int): size(b)/size(a) 
-        
+            factor (int): size(b)/size(a)
+
         Returns:
             ||a-b||_2/||a||
         """
-        b = b[:, 0::factor]
+        b = b[:, 0::factor]  # stretch b to roughly the same size as a
+        b = b[:, 0 : a.shape[1]]  # truncate to length of a
         return np.linalg.norm(a - b, 2) / np.linalg.norm(a, 2)
